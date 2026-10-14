@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="data:,">
+<title>Plumbing Lesson 3: Pipes &amp; Fittings – 3D</title>
+<style>
+  :root { --bg:#0f1418; --panel:#1a2228; --ink:#e8edf0; --mute:#9fb0bb; --ok:#2ecc71; --warn:#f1c40f; --bad:#e74c3c; --blue:#3fa7ff; --copper:#d9894a; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
+  #app { display:grid; grid-template-columns: 1fr 400px; height:100vh; height:100dvh; }
+  #view { position:relative; min-height:0; }
+  #view canvas { display:block; width:100%; height:100%; touch-action:none; }
+  #hint { position:absolute; left:10px; bottom:10px; font-size:12px; color:var(--mute); background:rgba(0,0,0,.45); padding:4px 8px; border-radius:6px; pointer-events:none; }
+  #status3d { position:absolute; left:10px; top:10px; right:10px; display:flex; gap:8px; flex-wrap:wrap; pointer-events:none; }
+  .pill { padding:6px 10px; border-radius:999px; font-weight:700; font-size:14px; background:rgba(0,0,0,.55); }
+  #side { background:var(--panel); overflow-y:auto; padding:0 14px 30px; border-left:1px solid #2a353d; }
+  h1 { font-size:18px; margin:12px 0 10px; }
+  h2 { font-size:14px; margin:16px 0 8px; color:var(--mute); text-transform:uppercase; letter-spacing:.05em; }
+  .tabs { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; position:sticky; top:0; background:var(--panel); padding:8px 0 10px; z-index:3; }
+  .tabs button { min-height:46px; font-size:15px; font-weight:800; border-radius:10px; border:2px solid #34434d; background:#222c33; color:var(--ink); cursor:pointer; }
+  .tabs button.on { border-color:var(--blue); background:#14304a; color:#cfe8ff; }
+  .card { background:#12191e; border-radius:12px; padding:12px; font-size:15px; line-height:1.45; border:1px solid #2a353d; }
+  .card .ct { font-size:18px; font-weight:800; color:#ffe27a; }
+  .card p { margin:6px 0 8px; }
+  .card .row { margin:5px 0; }
+  .card .row b { display:inline-block; min-width:76px; color:#9fd0ff; }
+  .tags { margin-top:6px; display:flex; gap:6px; flex-wrap:wrap; }
+  .tag { font-size:12px; font-weight:800; padding:3px 8px; border-radius:999px; background:#2a353d; }
+  .tag.sup { background:#173a5c; color:#9fd0ff; } .tag.drn { background:#3b3b3b; color:#ddd; } .tag.old { background:#4a2e14; color:#ffc58a; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { min-height:40px; padding:0 12px; border-radius:999px; border:1px solid #34434d; background:#222c33; color:var(--ink); font-size:14px; cursor:pointer; }
+  .chip.on { border-color:#ffd400; color:#ffe680; background:#3a3416; }
+  .chip.done { border-color:var(--ok); }
+  .tog { display:flex; align-items:center; gap:8px; min-height:40px; font-size:15px; }
+  .tog input { width:22px; height:22px; accent-color:var(--blue); }
+  .row2 { display:flex; gap:14px; flex-wrap:wrap; margin-top:8px; }
+  .btn { display:block; width:100%; min-height:50px; margin-top:10px; font-size:16px; font-weight:800; border-radius:10px; border:none; background:#2d7dd2; color:#fff; cursor:pointer; }
+  .btn.sec { background:#2a353d; }
+  .btn:disabled { background:#2a353d; color:#6c7b85; cursor:default; }
+  .opt { display:block; width:100%; text-align:left; min-height:50px; padding:10px 12px; margin:7px 0; border-radius:10px; border:2px solid #34434d; background:#222c33; color:var(--ink); font-size:15px; line-height:1.35; cursor:pointer; }
+  .opt .L { display:inline-block; min-width:24px; font-weight:800; color:#9fd0ff; }
+  .opt.pick { border-color:var(--blue); background:#14304a; }
+  .opt.right { border-color:var(--ok); background:#163524; }
+  .opt.wrong { border-color:var(--bad); background:#45191a; }
+  .opt:disabled { cursor:default; }
+  .fb { margin-top:8px; padding:10px 12px; border-radius:10px; font-size:15px; line-height:1.4; }
+  .fb.ok { background:#163524; color:#a8f0c4; } .fb.bad { background:#45191a; color:#ffb3ad; } .fb.info { background:#12191e; color:var(--ink); }
+  .score { font-size:16px; font-weight:800; margin:4px 0 8px; }
+  .q { font-size:17px; font-weight:700; line-height:1.35; margin:6px 0; }
+  .stitle { font-size:17px; font-weight:800; margin:12px 0 4px; color:#ffe27a; }
+  .see { font-size:15px; background:#12191e; border-radius:10px; padding:10px 12px; line-height:1.4; }
+  .step { font-size:14px; font-weight:800; color:var(--mute); text-transform:uppercase; margin:14px 0 2px; }
+  .explain { background:#12191e; border-radius:10px; padding:10px 12px; font-size:15px; line-height:1.45; }
+  .explain ul { margin:4px 0; padding-left:18px; }
+  .explain b { color:#ffd2ae; }
+  .rev { background:#12191e; border-radius:10px; padding:10px 12px; margin:8px 0; font-size:14px; line-height:1.4; border-left:4px solid var(--ok); }
+  .rev.x { border-left-color:var(--bad); }
+  .rev .ex { color:var(--mute); margin-top:4px; }
+  .big { font-size:28px; font-weight:900; margin:10px 0 4px; }
+  #err { display:none; position:absolute; inset:0; align-items:center; justify-content:center; text-align:center; padding:20px; color:var(--mute); }
+  [hidden] { display:none !important; }
+  @media (max-width: 820px) {
+    #app { grid-template-columns:1fr; grid-template-rows: 48vh auto; height:auto; }
+    #view { height:48vh; height:48dvh; position:sticky; top:0; z-index:4; background:var(--bg); }
+    #side { border-left:none; border-top:1px solid #2a353d; overflow:visible; }
+    .tabs { top:48vh; top:48dvh; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app">
+  <div id="view">
+    <div id="status3d"><span class="pill" id="pillMode">Explore</span><span class="pill" id="pillScore" hidden></span></div>
+    <div id="hint">Drag: rotate · Pinch/scroll: zoom · Two fingers/right-drag: pan · Tap a pipe</div>
+    <div id="err">Couldn't load the 3D library. Check your internet connection and reload.</div>
+  </div>
+  <div id="side">
+    <h1>🔧 Plumbing 3: Pipes &amp; Fittings</h1>
+    <div class="tabs" id="tabs">
+      <button data-m="explore" class="on">Explore</button>
+      <button data-m="identify">Identify</button>
+      <button data-m="fix">Fix-it</button>
+      <button data-m="quiz">Quiz</button>
+    </div>
+
+    <section id="sec-explore">
+      <div id="card" class="card"><div class="ct">Tap any pipe or fitting</div><p>Tap a piece in the 3D wall, or a name below. It glows and its card shows up here.</p></div>
+      <div class="row2">
+        <label class="tog"><input type="checkbox" id="lblTog"> Show labels</label>
+        <label class="tog"><input type="checkbox" id="flowTog" checked> Show water flow</label>
+      </div>
+      <button class="btn sec" id="homeBtn">Reset view</button>
+      <h2>Pipes</h2><div class="chips" id="chipsPipe"></div>
+      <h2>Fittings</h2><div class="chips" id="chipsFit"></div>
+      <h2>Quick guide</h2>
+      <div class="explain"><ul>
+        <li><b>Supply</b> = clean water under pressure. Blue = cold, red = hot. Pipes: PEX, copper, CPVC. Old homes: galvanized steel.</li>
+        <li><b>Drain (DWV)</b> = drain, waste, vent. No pressure, just gravity. Pipes: PVC, ABS. Old homes: cast iron.</li>
+        <li>PEX color is just a label. Red, blue, and white are the same pipe.</li>
+        <li><b>Never</b> use PVC or ABS for hot water supply.</li>
+        <li>Copper meeting galvanized steel? Put a <b>dielectric union</b> between them.</li>
+      </ul></div>
+    </section>
+
+    <section id="sec-identify" hidden>
+      <div class="score" id="idScore">Score: 0 / 0</div>
+      <div class="q">What is the glowing piece?</div>
+      <div id="idOpts"></div>
+      <div id="idFb"></div>
+      <button class="btn" id="idNext">Next piece →</button>
+    </section>
+
+    <section id="sec-fix" hidden>
+      <div class="score" id="fixScore"></div>
+      <div class="chips" id="fixChips"></div>
+      <div id="fixBody"></div>
+    </section>
+
+    <section id="sec-quiz" hidden><div id="quizBody"></div></section>
+  </div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const $ = id => document.getElementById(id);
+const V = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const UP = V(0, 1, 0), XAX = V(1, 0, 0), ZAX = V(0, 0, 1);
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const LET = ['A', 'B', 'C', 'D'];
+
+// ---------- Info cards ----------
+const INFO = {
+  pex_red:   { name:'PEX (red)', cat:'Pipe', side:'sup', what:'Flexible plastic tubing (cross-linked polyethylene). Red just marks it as hot.', where:'Hot water lines from the water heater to fixtures.', join:'Crimp or clamp rings, expansion fittings, or push-fit.', pros:'Bends around corners, fewer fittings, handles freezing better than rigid pipe, cheap.', cons:'Sunlight (UV) ruins it. Most makers want about 18 in. of metal pipe before PEX on a gas water heater.', fail:'Crimp ring placed or squeezed wrong; UV damage; chewed by rodents.' },
+  pex_blue:  { name:'PEX (blue)', cat:'Pipe', side:'sup', what:'Same PEX tubing. Blue just marks it as cold.', where:'Cold water lines to sinks, toilets, and showers.', join:'Crimp or clamp rings, expansion fittings, or push-fit.', pros:'Flexible, quick to run, quiet, doesn\'t corrode.', cons:'Can\'t be left in sunlight. Needs the right tool for its fittings.', fail:'Leaks at a bad crimp; kinks if bent too tight.' },
+  pex_white: { name:'PEX (white)', cat:'Pipe', side:'sup', what:'Same PEX tubing. White can be used for hot or cold.', where:'Any supply line. Here it runs up to an upstairs bathroom.', join:'Crimp or clamp rings, expansion fittings, or push-fit.', pros:'One pipe for both hot and cold. Long runs with no joints.', cons:'Harder to tell hot from cold, so label it. No UV exposure.', fail:'Same as all PEX: bad crimps, kinks, UV damage.' },
+  copper:    { name:'Copper pipe (Type L / M)', cat:'Pipe', side:'sup', what:'Rigid copper pipe. Type L has thicker walls (blue print). Type M is thinner (red print).', where:'Hot and cold supply lines. Common since the 1950s and still used.', join:'Soldered ("sweated") with flux and a torch. Push-fit or compression also work.', pros:'Lasts 50+ years, handles heat, won\'t burn.', cons:'Costs more. Needs a torch and skill to solder.', fail:'Pinhole leaks, bad solder joints, green corrosion at joints.' },
+  cpvc:      { name:'CPVC', cat:'Pipe', side:'sup', what:'Cream or tan rigid plastic made for hot water (rated to 180°F).', where:'Hot and cold supply lines. Common in Southern homes built from the 1980s to 2000s.', join:'CPVC solvent cement (primer where code requires it). Push-fit also works.', pros:'Cheap, doesn\'t corrode, handles hot water.', cons:'Gets brittle with age and cracks if bent or hit.', fail:'Cracks at fittings in older lines.' },
+  galv:      { name:'Galvanized steel', cat:'Pipe', side:'sup', old:true, what:'Steel pipe coated in zinc. Gray, with threaded ends.', where:'Supply lines in homes built before about 1960.', join:'Threaded fittings, with pipe dope or Teflon tape on the threads.', pros:'Very strong.', cons:'Old, aging material. Rusts inside, which cuts water pressure. Usually replaced.', fail:'Low pressure, rusty water, leaks at the threads.' },
+  pvc:       { name:'PVC (Schedule 40)', cat:'Pipe', side:'drn', what:'White rigid plastic pipe for drain, waste, and vent (DWV) lines.', where:'Sink, tub, and toilet drains, and vent pipes.', join:'Purple primer, then PVC solvent cement (glue).', pros:'Cheap, light, smooth inside, easy to cut and glue.', cons:'Not for hot water supply (rated only to about 140°F). Needs a transition fitting to join ABS.', fail:'Joints not primed or not pushed fully in; cracks from impact.' },
+  abs:       { name:'ABS', cat:'Pipe', side:'drn', what:'Black rigid plastic pipe for drain, waste, and vent lines.', where:'Drain lines, more common in the West and in some older homes.', join:'ABS cement. One step, no primer.', pros:'Tough and impact resistant. Quick to glue.', cons:'Not for water supply. Some areas don\'t allow it. Needs a transition fitting to join PVC.', fail:'Cracked joints; sun damage if left outside.' },
+  castiron:  { name:'Cast iron stack', cat:'Pipe', side:'drn', old:true, what:'Heavy iron pipe for the main drain and vent stack.', where:'Older homes (mostly before the 1970s), main stack and under slabs.', join:'Old way: lead and oakum in hub joints. Repairs: rubber no-hub couplings with steel bands.', pros:'Very quiet and strong.', cons:'Old, aging material. Heavy, and rusts from the inside out.', fail:'Cracks, rust-through, and buildup that slows drains.' },
+  elbow:     { name:'90° elbow', cat:'Fitting', side:'both', what:'Turns a pipe 90°. 45° elbows also exist.', where:'Any change of direction, supply or drain. This one is copper.', join:'Matches the pipe: soldered on copper, glued on PVC, crimped on PEX.', pros:'Simple and cheap.', cons:'Every elbow adds friction and cuts flow a little.', fail:'Bad solder joint leaks at the elbow.' },
+  tee:       { name:'Sanitary tee', cat:'Fitting', side:'drn', what:'A T-shaped fitting that joins three pipes. A sanitary tee has a curved inlet so waste flows down.', where:'Where the sink drain joins the vertical drain and vent pipe.', join:'Purple primer and PVC cement.', pros:'Lets one pipe drain below and vent above.', cons:'Must point the right way, with the curve aimed down.', fail:'Installed backward or on its back on a flat line, which causes clogs.' },
+  coupling:  { name:'Coupling', cat:'Fitting', side:'sup', what:'A short sleeve that joins two straight pipes end to end.', where:'Making a pipe longer or splicing in a repair.', join:'Soldered here. The silver rings are the solder.', pros:'Cheap and simple.', cons:'Every joint is one more spot that could leak.', fail:'Joint not cleaned, fluxed, or heated right, so the solder doesn\'t seal.' },
+  reducer:   { name:'Reducer (¾″ × ½″)', cat:'Fitting', side:'both', what:'Joins a bigger pipe to a smaller one.', where:'Here the ¾″ main steps down to a ½″ branch line.', join:'Soldered here. Glued and threaded versions exist.', pros:'Keeps more flow on the main line.', cons:'Never make a drain smaller in the direction the water flows.', fail:'Leaks at a bad joint.' },
+  pushfit:   { name:'Push-fit (SharkBite-style)', cat:'Fitting', side:'sup', what:'Brass fitting with grip teeth and an O-ring inside. You just push the pipe in.', where:'Quick repairs and changes from one pipe type to another (copper to PEX here).', join:'Cut square, remove burrs, mark the depth, push in. A release tool takes it off.', pros:'No torch or glue. Works on copper, PEX, and CPVC.', cons:'Costs more. Best kept where you can reach it later.', fail:'Pipe not pushed in all the way, or a burr cuts the O-ring.' },
+  compression:{ name:'Compression fitting (shutoff)', cat:'Fitting', side:'sup', what:'A nut squeezes a brass ring (the ferrule) onto the pipe to make the seal.', where:'Shutoff valves (angle stops) under sinks and toilets.', join:'Slide on the nut, then the ferrule. Hand-tight plus about a half turn.', pros:'No solder or glue. Easy to replace a valve.', cons:'Overtightening crushes the ferrule. Old ferrules are hard to remove.', fail:'Missing or crushed ferrule causes a slow drip.' },
+  crimp:     { name:'PEX crimp ring', cat:'Fitting', side:'sup', what:'A copper ring squeezed around PEX over a barbed brass fitting.', where:'PEX joints, and here, a PEX-to-copper transition.', join:'Ring ⅛–¼″ from the tube end, crimp with the tool, check with a go/no-go gauge.', pros:'Cheap and reliable. OK inside walls.', cons:'Needs a crimp tool that matches the pipe size.', fail:'Ring off the barbs, crooked, or not squeezed enough, so it leaks.' },
+  threaded:  { name:'Threaded coupling', cat:'Fitting', side:'sup', old:true, what:'A threaded sleeve that joins two threaded pipes.', where:'Galvanized steel water lines (and black iron gas lines).', join:'Teflon tape (wrapped clockwise) or pipe dope on the male threads, then wrench-tight.', pros:'Can be taken apart.', cons:'Threads are the thinnest part of the pipe, so rust hits there first.', fail:'Rusted threads leak.' },
+  dielectric:{ name:'Dielectric union', cat:'Fitting', side:'sup', what:'Joins two different metals with a plastic insulator between them.', where:'Where copper meets galvanized steel, and often at water heaters.', join:'One half threads onto the steel, the other is soldered to the copper. The nut pulls them together over a gasket.', pros:'Stops galvanic corrosion between the metals.', cons:'The gasket can wear out after many years.', fail:'Leaving it out lets the copper eat the steel fast.' },
+  ptrap:     { name:'P-trap', cat:'Fitting', side:'drn', what:'A U-shaped bend under a drain that always holds some water.', where:'Under every sink, tub, shower, and washer drain. Toilets have one built in.', join:'Slip nuts with washers (hand-tight), or glued.', pros:'The water seal blocks sewer gas. Comes off easily to clear clogs.', cons:'Can dry out if the drain isn\'t used for weeks. Just run some water.', fail:'Clogs (hair, grease), drips from loose slip nuts, dry trap smell.' },
+};
+const IDS = Object.keys(INFO);
+const SIDE = { sup:['sup','Supply'], drn:['drn','Drain (DWV)'], both:['','Supply or drain'] };
+
+// ---------- Renderer / scene ----------
+const view = $('view');
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+view.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1b2329);
+const camera = new THREE.PerspectiveCamera(50, 1, 0.05, 200);
+const HOME = { cam:V(-0.25, 3.5, 12.9), tgt:V(-0.25, 2.6, 0) };
+camera.position.copy(HOME.cam);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.copy(HOME.tgt);
+controls.enableDamping = true; controls.screenSpacePanning = true;
+controls.minDistance = 1.2; controls.maxDistance = 26; controls.maxPolarAngle = Math.PI * 0.56;
+
+const pmrem = new THREE.PMREMGenerator(renderer); scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.add(new THREE.HemisphereLight(0xe8f0f8, 0x3a3026, 0.5));
+const sun = new THREE.DirectionalLight(0xffffff, 1.1);
+sun.position.set(5, 9, 9); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left:-10, right:10, top:8, bottom:-4, near:1, far:40 }); sun.shadow.bias = -0.0005;
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0xbfd8ff, 0.45); fill.position.set(-6, 4, 6); scene.add(fill);
+
+// ---------- Materials ----------
+const std = (color, roughness = .5, metalness = 0, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness, metalness, ...extra });
+const MAT = {
+  copper: () => std(0xc27a46, .32, .85), solder: () => std(0xdfe3e6, .25, .9),
+  pexR: () => std(0xc8302c, .45), pexB: () => std(0x2463b8, .45), pexW: () => std(0xf1f1ec, .5),
+  pvc: () => std(0xf4f4f1, .55), hub: () => std(0xe6e6e2, .55), purple: () => std(0x7b3fb5, .6),
+  cpvc: () => std(0xe6d3a0, .5), cpvcHub: () => std(0xd6c08a, .5), abs: () => std(0x1d1d1f, .6), absHub: () => std(0x2c2c2f, .6),
+  galv: () => std(0x9da6ab, .5, .65), galvDark: () => std(0x5b6266, .6, .6),
+  iron: () => std(0x35302b, .92, .35), rust: () => std(0x8a4a24, 1), brass: () => std(0xc9a23e, .3, .85),
+  chrome: () => std(0xdfe4e8, .15, .95), rubber: () => std(0x151515, .9), band: () => std(0xc5ccd0, .3, .9),
+  yellow: () => std(0xf0c419, .5), tan: () => std(0xd9c7a0, .5),
+};
+
+// ---------- Geometry helpers ----------
+function addMesh(parent, geo, mat) { const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m; }
+function cyl(parent, a, b, r, mat, seg = 24, rTop) {
+  const d = V().subVectors(b, a); const len = d.length();
+  const m = addMesh(parent, new THREE.CylinderGeometry(rTop ?? r, r, len, seg), mat);
+  m.position.copy(a).lerp(b, .5); m.quaternion.setFromUnitVectors(UP, d.normalize()); return m;
+}
+function sleeve(parent, c, dir, len, r, mat, seg = 24) { const d = dir.clone().normalize().multiplyScalar(len / 2); return cyl(parent, c.clone().sub(d), c.clone().add(d), r, mat, seg); }
+function ring(parent, pos, dir, r, tube, mat) { const m = addMesh(parent, new THREE.TorusGeometry(r, tube, 8, 32), mat); m.position.copy(pos); m.quaternion.setFromUnitVectors(ZAX, dir.clone().normalize()); return m; }
+function sph(parent, pos, r, mat) { const m = addMesh(parent, new THREE.SphereGeometry(r, 20, 14), mat); m.position.copy(pos); return m; }
+function box(parent, w, h, d, pos, mat) { const m = addMesh(parent, new THREE.BoxGeometry(w, h, d), mat); m.position.copy(pos); return m; }
+function tube(parent, curve, r, mat, segs) { const len = curve.getLength(); return addMesh(parent, new THREE.TubeGeometry(curve, segs || Math.max(24, Math.round(len * 40)), r, 18, false), mat); }
+function run(parent, pts, r, mat) { for (let i = 0; i < pts.length - 1; i++) cyl(parent, pts[i], pts[i + 1], r, mat); for (let i = 1; i < pts.length - 1; i++) sph(parent, pts[i], r, mat); }
+function roundedPath(pts, rad) {
+  const path = new THREE.CurvePath(); let prev = pts[0].clone();
+  for (let i = 1; i < pts.length - 1; i++) {
+    const p = pts[i], da = V().subVectors(pts[i - 1], p), db = V().subVectors(pts[i + 1], p);
+    const rr = Math.min(rad, da.length() / 2, db.length() / 2); da.normalize(); db.normalize();
+    const p1 = p.clone().addScaledVector(da, rr), p2 = p.clone().addScaledVector(db, rr);
+    if (prev.distanceTo(p1) > 1e-4) path.add(new THREE.LineCurve3(prev.clone(), p1));
+    path.add(new THREE.QuadraticBezierCurve3(p1, p.clone(), p2)); prev = p2;
+  }
+  path.add(new THREE.LineCurve3(prev, pts[pts.length - 1].clone())); return path;
+}
+// soldered copper joint helpers
+function solderRings(parent, pts, dir, r, s) { for (const p of pts) ring(parent, p, dir, r, .012, s); }
+function elbowFit(parent, corner, a, b, r, m, s, len = .18) {
+  sph(parent, corner, r, m);
+  for (const d of [a, b]) { const dn = d.clone().normalize(); sleeve(parent, corner.clone().addScaledVector(dn, len / 2), dn, len, r, m); if (s) ring(parent, corner.clone().addScaledVector(dn, len), dn, r, .012, s); }
+}
+function teeFit(parent, c, runDir, brDir, r, m, s) {
+  const rd = runDir.clone().normalize(), bd = brDir.clone().normalize();
+  sleeve(parent, c, rd, .3, r, m); sleeve(parent, c.clone().addScaledVector(bd, .08), bd, .16, r * .97, m);
+  if (s) { ring(parent, c.clone().addScaledVector(rd, .15), rd, r, .012, s); ring(parent, c.clone().addScaledVector(rd, -.15), rd, r, .012, s); ring(parent, c.clone().addScaledVector(bd, .16), bd, r * .97, .012, s); }
+}
+
+// ---------- Text helpers ----------
+function labelTex(text, o = {}) {
+  const size = o.size || 48, pad = o.pad ?? 18;
+  const c = document.createElement('canvas'); let g = c.getContext('2d');
+  g.font = `bold ${size}px Arial`; const w = Math.ceil(g.measureText(text).width) + pad * 2, h = Math.ceil(size * 1.5);
+  c.width = w; c.height = h; g = c.getContext('2d');
+  if (o.bg) { const r = h * .3; g.fillStyle = o.bg; g.beginPath(); g.moveTo(r, 0); g.lineTo(w - r, 0); g.quadraticCurveTo(w, 0, w, r); g.lineTo(w, h - r); g.quadraticCurveTo(w, h, w - r, h); g.lineTo(r, h); g.quadraticCurveTo(0, h, 0, h - r); g.lineTo(0, r); g.quadraticCurveTo(0, 0, r, 0); g.fill(); }
+  g.font = `bold ${size}px Arial`; g.fillStyle = o.color || '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, w / 2, h / 2 + 1);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return { t, aspect:w / h };
+}
+function sprite(text, h, o = {}) {
+  const { t, aspect } = labelTex(text, o);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map:t, depthTest:o.depthTest ?? false, transparent:true, sizeAttenuation:false }));
+  h *= .12; s.scale.set(h * aspect, h, 1); s.renderOrder = 10; return s;
+}
+function decal(parent, text, h, pos, o = {}) {
+  const { t, aspect } = labelTex(text, { size:56, pad:6, ...o });
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(h * aspect, h), new THREE.MeshBasicMaterial({ map:t, transparent:true, depthWrite:false }));
+  m.position.copy(pos); if (o.rotZ) m.rotation.z = o.rotZ; parent.add(m); return m;
+}
+const tagStyle = { bg:'rgba(15,22,28,.82)', color:'#cfd8dc', size:40 };
+
+// ---------- House scene ----------
+const house = new THREE.Group(); scene.add(house);
+const env = new THREE.Group(); house.add(env);
+{
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(22, 10), std(0x6f6a63, .95));
+  floor.rotation.x = -Math.PI / 2; floor.position.set(0, 0, 3.3); floor.receiveShadow = true; env.add(floor);
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(22, 6.4), std(0xb7afa1, .95));
+  wall.position.set(0, 3.0, -0.7); wall.receiveShadow = true; env.add(wall);
+  const wood = std(0xc9a26b, .85);
+  for (let x = -7.9; x <= 8; x += 1.33) box(env, .12, 5.4, .3, V(x, 2.7, -0.54), wood);
+  box(env, 16.6, .12, .3, V(0, .06, -.54), wood); box(env, 16.6, .2, .3, V(0, 5.5, -.54), wood);
+  for (let x = -7.9; x <= 8; x += 1.33) box(env, .14, .3, 3.2, V(x, 5.75, .9), wood);
+  // water heater
+  const wh = std(0xe9e4d8, .5, .1), whTop = std(0xb9b4a8, .45, .3);
+  cyl(env, V(-5, .02, .3), V(-5, 2.22, .3), .62, wh, 40);
+  cyl(env, V(-5, 2.22, .3), V(-5, 2.3, .3), .62, whTop, 40, .56);
+  decal(env, 'WATER HEATER', .13, V(-5, 1.45, .925), { color:'#3a3f44' });
+  const br = MAT.brass(); cyl(env, V(-4.45, 1.95, .3), V(-4.3, 1.95, .3), .04, br); cyl(env, V(-4.3, 1.95, .3), V(-4.3, .35, .3), .04, MAT.copper());
+  decal(env, 'T&P valve', .07, V(-4.15, 1.75, .35), { color:'#e8edf0' });
+  // sink
+  const ceramic = std(0xf7f7f5, .2, .05);
+  box(env, 1.5, .26, 1.0, V(.5, 2.62, .62), ceramic);
+  const bowl = new THREE.Mesh(new THREE.CylinderGeometry(.52, .52, .02, 40), std(0xe2e4e6, .25)); bowl.scale.z = .68; bowl.position.set(.5, 2.755, .7); env.add(bowl);
+  cyl(env, V(.5, 2.76, .7), V(.5, 2.77, .7), .05, std(0x222222, .5));
+  const ch = MAT.chrome();
+  cyl(env, V(.5, 2.75, .26), V(.5, 3.05, .26), .045, ch); cyl(env, V(.5, 3.02, .26), V(.5, 3.02, .55), .03, ch);
+  cyl(env, V(.25, 2.75, .26), V(.25, 2.86, .26), .035, ch); cyl(env, V(.75, 2.75, .26), V(.75, 2.86, .26), .035, ch);
+  cyl(env, V(.5, 2.49, .62), V(.5, 1.88, .62), .058, ch); // tailpiece
+  const braid = std(0xb7bec3, .55, .7);
+  tube(env, roundedPath([V(-.3, 1.86, .33), V(-.3, 2.1, .33), V(.25, 2.3, .3), V(.25, 2.49, .3)], .12), .025, braid);
+  tube(env, roundedPath([V(1.3, 1.86, .33), V(1.3, 2.1, .33), V(.75, 2.3, .3), V(.75, 2.49, .3)], .12), .025, braid);
+  // labels
+  const sup = sprite('SUPPLY · under pressure', .3, { bg:'rgba(30,90,160,.88)', size:44 }); sup.position.set(-2.6, 4.75, .4); env.add(sup);
+  const drn = sprite('DRAIN · gravity (DWV)', .3, { bg:'rgba(85,85,85,.9)', size:44 }); drn.position.set(3.2, 4.75, .4); env.add(drn);
+  const cold = sprite('COLD', .2, { bg:'rgba(36,99,184,.9)', size:40 }); cold.position.set(-1.6, 3.24, .2); env.add(cold);
+  const hot = sprite('HOT', .2, { bg:'rgba(200,48,44,.9)', size:40 }); hot.position.set(-1.6, 2.5, .2); env.add(hot);
+  for (const [t, x, y] of [['from city main', -6.35, .25], ['to upstairs bath', -6.35, 5.15], ['to laundry', -.6, 5.15], ['vent to roof', 2.2, 5.15], ['from tub above', 4.3, 5.15], ['to sewer', 5.7, .12]]) {
+    const s = sprite(t, .17, tagStyle); s.position.set(x, y, .35); env.add(s);
+  }
+}
+
+// ---------- Pieces ----------
+const pieces = {};
+function P(id) { const g = new THREE.Group(); g.userData.pieceId = id; house.add(g); pieces[id] = { group:g }; return g; }
+{ // galvanized steel
+  const g = P('galv'), m = MAT.galv(), dk = MAT.galvDark();
+  cyl(g, V(-7.2, -.05), V(-7.2, .62), .085, m); cyl(g, V(-7.2, .78), V(-7.2, 1.37), .085, m);
+  for (const y of [.54, .57, .83, .86, 1.3, 1.33]) ring(g, V(-7.2, y), UP, .085, .007, dk);
+  cyl(g, V(-7.2, 0), V(-7.2, .03), .16, m);
+}
+{ const g = P('threaded'), m = MAT.galv(); sleeve(g, V(-7.2, .7), UP, .24, .115, m); ring(g, V(-7.2, .59), UP, .115, .014, m); ring(g, V(-7.2, .81), UP, .115, .014, m); }
+{ const g = P('dielectric'), st = MAT.galv(), br = MAT.brass(), y = MAT.yellow();
+  cyl(g, V(-7.2, 1.34), V(-7.2, 1.47), .115, st, 6); cyl(g, V(-7.2, 1.47), V(-7.2, 1.51), .125, y, 32);
+  cyl(g, V(-7.2, 1.49), V(-7.2, 1.6), .145, br, 6); cyl(g, V(-7.2, 1.6), V(-7.2, 1.71), .1, br); }
+{ // copper
+  const g = P('copper'), m = MAT.copper(), s = MAT.solder();
+  cyl(g, V(-7.2, 1.68), V(-7.2, 2.9), .085, m);
+  cyl(g, V(-7.1, 3), V(-4.48, 3), .085, m);
+  cyl(g, V(-4.32, 3), V(-3.58, 3), .065, m);
+  teeFit(g, V(-6.0, 3), XAX, UP, .1, m, s); cyl(g, V(-6.0, 3), V(-6.0, 3.32), .085, m);
+  teeFit(g, V(-5.3, 3), XAX, V(0, -1, 0), .1, m, s); run(g, [V(-5.3, 3), V(-5.3, 2.62), V(-5.3, 2.62, .3), V(-5.3, 2.32, .3)], .085, m);
+  teeFit(g, V(-3.9, 3), XAX, UP, .08, m, s); cyl(g, V(-3.9, 3), V(-3.9, 3.42), .065, m);
+  cyl(g, V(-4.7, 2.3, .3), V(-4.7, 2.47, .3), .075, m);
+  decal(g, 'TYPE L  ¾″  COPPER', .07, V(-7.2, 2.3, .088), { color:'#1f4fb5', rotZ:Math.PI / 2 });
+}
+{ const g = P('elbow'), m = MAT.copper(), s = MAT.solder(); elbowFit(g, V(-7.2, 3), V(0, -1, 0), XAX, .105, m, s); }
+{ const g = P('coupling'), m = MAT.copper(), s = MAT.solder(); sleeve(g, V(-6.6, 3), XAX, .24, .105, m); solderRings(g, [V(-6.72, 3), V(-6.48, 3)], XAX, .105, s); }
+{ const g = P('reducer'), m = MAT.copper(), s = MAT.solder();
+  sleeve(g, V(-4.53, 3), XAX, .07, .105, m); cyl(g, V(-4.5, 3), V(-4.32, 3), .105, m, 24, .082); sleeve(g, V(-4.29, 3), XAX, .07, .082, m);
+  solderRings(g, [V(-4.565, 3)], XAX, .105, s); solderRings(g, [V(-4.255, 3)], XAX, .082, s); }
+{ const g = P('pushfit'), br = MAT.brass(), tan = MAT.tan();
+  cyl(g, V(-3.58, 3), V(-3.18, 3), .095, br); cyl(g, V(-3.42, 3), V(-3.34, 3), .108, br, 6);
+  cyl(g, V(-3.63, 3), V(-3.56, 3), .1, tan); cyl(g, V(-3.2, 3), V(-3.13, 3), .1, tan); }
+{ const g = P('pex_blue'), m = MAT.pexB();
+  tube(g, roundedPath([V(-3.15, 3), V(1.3, 3), V(1.3, 1.62), V(1.3, 1.62, .13)], .28), .07, m);
+  cyl(g, V(1.3, 1.62, .1), V(1.3, 1.62, .23), .058, MAT.copper());
+  decal(g, 'PEX-B  ½″  COLD', .06, V(-1.0, 3, .072), { color:'#ffffff' }); }
+{ const g = P('pex_red'), m = MAT.pexR();
+  cyl(g, V(-4.7, 2.45, .3), V(-4.7, 2.58, .3), .085, MAT.brass(), 6);
+  tube(g, roundedPath([V(-4.7, 2.56, .3), V(-4.7, 2.72, .3), V(-4.3, 2.72, 0), V(-.3, 2.72, 0), V(-.3, 1.62, 0), V(-.3, 1.62, .13)], .22), .07, m);
+  cyl(g, V(-.3, 1.62, .1), V(-.3, 1.62, .23), .058, MAT.copper());
+  decal(g, 'PEX-A  ½″  HOT', .06, V(-2.6, 2.72, .072), { color:'#ffffff' }); }
+{ const g = P('compression'), ch = MAT.chrome(), hd = std(0xeeeeee, .4);
+  for (const x of [-.3, 1.3]) {
+    cyl(g, V(x, 1.62, .24), V(x, 1.62, .42), .065, ch); cyl(g, V(x, 1.62, .2), V(x, 1.62, .28), .085, ch, 6);
+    cyl(g, V(x, 1.62, .33), V(x, 1.88, .33), .045, ch); cyl(g, V(x, 1.74, .33), V(x, 1.82, .33), .065, ch, 6);
+    const h = cyl(g, V(x, 1.62, .42), V(x, 1.62, .47), .1, hd); h.scale.x = 1.5;
+  } }
+{ const g = P('pex_white'), m = MAT.pexW(); tube(g, roundedPath([V(-6.0, 3.44), V(-6.0, 4.4), V(-6.35, 4.95), V(-6.35, 5.55)], .3), .075, m); }
+{ const g = P('crimp'), br = MAT.brass(), cu = std(0xb5683a, .35, .75);
+  cyl(g, V(-6.0, 3.28), V(-6.0, 3.43), .092, br); cyl(g, V(-6.0, 3.47), V(-6.0, 3.55), .094, cu); }
+{ const g = P('cpvc'), m = MAT.cpvc(), hub = MAT.cpvcHub();
+  cyl(g, V(-3.9, 3.4), V(-3.9, 3.53), .085, MAT.brass(), 6);
+  cyl(g, V(-3.9, 3.52), V(-3.9, 4.1), .07, m); cyl(g, V(-3.9, 4.1), V(-.6, 4.1), .07, m); cyl(g, V(-.6, 4.1), V(-.6, 5.55), .07, m);
+  elbowFit(g, V(-3.9, 4.1), V(0, -1, 0), XAX, .088, hub, null, .14); elbowFit(g, V(-.6, 4.1), V(-1, 0, 0), UP, .088, hub, null, .14);
+  sleeve(g, V(-2.3, 4.1), XAX, .2, .088, hub);
+  decal(g, 'CPVC  CTS ½″  180°F', .06, V(-1.45, 4.1, .072), { color:'#5a4a20' }); }
+{ // PVC drain
+  const g = P('pvc'), m = MAT.pvc(), hub = MAT.hub(), pur = MAT.purple();
+  cyl(g, V(.5, 1.64, .14), V(.5, 1.64, 0), .08, m);
+  elbowFit(g, V(.5, 1.64, 0), ZAX, V(1, -.05, 0), .1, hub, null, .14);
+  cyl(g, V(.5, 1.64, 0), V(2.0, 1.57, 0), .08, m);
+  cyl(g, V(2.2, 1.8), V(2.2, 5.55), .1, m); cyl(g, V(2.2, 1.32), V(2.2, .44), .1, m);
+  elbowFit(g, V(2.2, .42), UP, XAX, .122, hub, null, .2);
+  cyl(g, V(2.2, .42), V(6.02, .36), .1, m);
+  for (const [p, d, r] of [[V(.5, 1.64, .14), ZAX, .1], [V(.64, 1.64, 0), XAX, .1], [V(2.2, .62), UP, .122], [V(2.4, .42), XAX, .122]]) ring(g, p, d, r, .009, pur);
+  decal(g, 'PVC  SCH 40  DWV  2″', .07, V(2.2, 3.2, .102), { color:'#333', rotZ:Math.PI / 2 }); }
+{ const g = P('tee'), hub = MAT.hub(), pur = MAT.purple();
+  sleeve(g, V(2.2, 1.56), UP, .52, .125, hub); sleeve(g, V(2.05, 1.56), XAX, .22, .115, hub);
+  for (const [p, d, r] of [[V(2.2, 1.3), UP, .125], [V(2.2, 1.82), UP, .125], [V(1.94, 1.56), XAX, .115]]) ring(g, p, d, r, .009, pur); }
+{ const g = P('ptrap'), m = MAT.pvc();
+  const c = new THREE.CatmullRomCurve3([V(.5, 1.93, .62), V(.5, 1.6, .62), V(.5, 1.43, .57), V(.5, 1.37, .46), V(.5, 1.42, .35), V(.5, 1.55, .29), V(.5, 1.62, .21), V(.5, 1.64, .12)]);
+  tube(g, c, .075, m, 90); ring(g, V(.5, 1.9, .62), UP, .085, .03, m); ring(g, V(.5, 1.64, .15), ZAX, .085, .03, m); }
+{ const g = P('abs'), m = MAT.abs(), hub = MAT.absHub();
+  cyl(g, V(4.3, 5.55), V(4.3, 1.05), .1, m); elbowFit(g, V(4.3, 1.02), UP, XAX, .122, hub, null, .2);
+  cyl(g, V(4.3, 1.02), V(6.02, .97), .1, m); sleeve(g, V(4.3, 3.2), UP, .26, .122, hub);
+  decal(g, 'ABS  DWV  2″', .07, V(4.3, 2.3, .102), { color:'#e8e8e8', rotZ:Math.PI / 2 }); }
+{ const g = P('castiron'), m = MAT.iron(), rust = MAT.rust(), rub = MAT.rubber(), band = MAT.band();
+  cyl(g, V(6.5, -.05), V(6.5, 5.55), .22, m, 32);
+  for (const y of [2.4, 4.5]) sleeve(g, V(6.5, y), UP, .3, .28, m, 32);
+  for (const y of [.36, .97]) {
+    cyl(g, V(6.5, y), V(6.17, y), .13, m); cyl(g, V(5.95, y), V(6.22, y), .14, rub);
+    ring(g, V(6.0, y), XAX, .142, .016, band); ring(g, V(6.17, y), XAX, .142, .016, band);
+  }
+  for (const [x, y, sc] of [[6.44, 1.6, 1], [6.58, 3.1, .8], [6.42, 4.0, 1.2], [6.55, .7, .7]]) { const s = sph(g, V(x, y, .19), .07 * sc, rust); s.scale.set(1, 1.6, .35); }
+}
+// labels per piece
+const labels = {};
+for (const id of IDS) {
+  const g = pieces[id].group; g.updateMatrixWorld(true);
+  const b = new THREE.Box3().setFromObject(g); const c = b.getCenter(V());
+  const s = sprite(INFO[id].name, .2, { bg:'rgba(20,28,34,.9)', color:'#ffe27a', size:38 });
+  s.position.set(c.x, Math.min(b.max.y + .18, 5.3), c.z + .25); s.visible = false; house.add(s); labels[id] = s;
+}
+const pickables = []; for (const id of IDS) pieces[id].group.traverse(o => { if (o.isMesh) pickables.push(o); });
+
+// ---------- Flow particles ----------
+const flows = []; const dummy = new THREE.Object3D(); const tmpV = V();
+function addFlow(pts, color, n, speed, offZ) {
+  const curve = roundedPath(pts, .2); const len = curve.getLength();
+  const mesh = new THREE.InstancedMesh(new THREE.SphereGeometry(.032, 8, 6), new THREE.MeshBasicMaterial({ color }), n);
+  mesh.frustumCulled = false; house.add(mesh);
+  flows.push({ curve, mesh, n, speed:speed / len, t:Array.from({ length:n }, (_, i) => i / n), offZ });
+}
+addFlow([V(-7.2, 0), V(-7.2, 3), V(1.3, 3), V(1.3, 1.62), V(1.3, 1.62, .3)], 0x8fd3ff, 70, .9, .12);
+addFlow([V(-4.7, 2.3, .3), V(-4.7, 2.72, .3), V(-4.3, 2.72, 0), V(-.3, 2.72, 0), V(-.3, 1.62, 0), V(-.3, 1.62, .3)], 0xff8a7a, 45, .9, .1);
+addFlow([V(.5, 1.64, .14), V(.5, 1.64, 0), V(2.2, 1.56, 0), V(2.2, .42, 0), V(6.5, .36, 0), V(6.5, -.05, 0)], 0xb8a27a, 45, .5, .14);
+addFlow([V(4.3, 5.5), V(4.3, 1.02), V(6.5, .97), V(6.5, -.05)], 0xb8a27a, 35, .5, .26);
+
+// ---------- Fix-it bench ----------
+const bench = new THREE.Group(); bench.visible = false; scene.add(bench);
+{
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(10, 7), std(0x6f6a63, .95)); floor.rotation.x = -Math.PI / 2; floor.position.z = 1.5; floor.receiveShadow = true; bench.add(floor);
+  box(bench, 7, 3.8, .08, V(0, 1.9, -.68), std(0xc8a879, .85));
+}
+function recenter(g) {
+  g.updateMatrixWorld(true); const c = new THREE.Box3().setFromObject(g).getCenter(V());
+  g.children.forEach(ch => ch.position.sub(c)); g.position.copy(c); return g;
+}
+const drips = [], gases = [];
+function addDrip(scen, pos) { const pud = new THREE.Mesh(new THREE.CircleGeometry(.36, 32), std(0x6fb8f0, .1, .1, { transparent:true, opacity:.45 })); pud.rotation.x = -Math.PI / 2; pud.position.set(pos.x, .006, pos.z + .05); pud.scale.setScalar(.01); bench.add(pud); drips.push({ scen, pos, on:true, acc:Math.random() * .4, pud }); }
+function addGas(scen, pos, color) { gases.push({ scen, pos, on:true, acc:0, color }); }
+
+const SCEN = []; const SCEN_EXTRA = {};
+function scenario(def, build) { const g = new THREE.Group(); g.visible = false; bench.add(g); const parts = { broken:[], fixed:[] }; build(g, parts, SCEN.length); def.group = g; Object.assign(def, parts); SCEN.push(def); }
+function part(g, list, fn) { const p = new THREE.Group(); g.add(p); fn(p); recenter(p); list.push(p); p.userData.p0 = p.position.clone(); return p; }
+function lbl(g, text, pos) { const s = sprite(text, .25, tagStyle); s.position.copy(pos); g.add(s); return s; }
+
+// (a) copper straight to galvanized
+scenario({ title:'Crusty joint between two metals', see:'An old gray steel pipe meets a copper pipe. The joint is crusty, rusty, and dripping.',
+  cam:{ tgt:V(0, 1.6, 0), cam:V(.8, 2.3, 3.6) },
+  diag:[ { t:'Galvanic corrosion: copper is touching galvanized steel directly', ok:true, why:'Right. Two different metals touching in water act like a battery. The steel side gets eaten away.' },
+         { t:'Hard water scale built up because the pipe is too small', ok:false, why:'Scale builds up inside pipes. This crust is on the outside, right where two different metals meet.' },
+         { t:'Too much Teflon tape was wrapped on the threads', ok:false, why:'Extra tape can make a joint weep, but it doesn\'t cause green crust and rust.' },
+         { t:'The pipe froze and burst at the joint last winter', ok:false, why:'A freeze split usually shows a bulge or a long crack, not crust and rust at a metal-to-metal joint.' } ],
+  fix:[ { t:'Install a dielectric union between the copper and the steel', ok:true, why:'Yes. Its plastic insulator breaks the metal-to-metal contact, so the corrosion stops.' },
+        { t:'Wrap the joint with epoxy putty and check it in a month', ok:false, why:'Putty hides the leak, but the metals still touch, so the corrosion keeps going.' },
+        { t:'Tighten the joint another full turn with a pipe wrench', ok:false, why:'The threads are already rotting. Tightening can snap the pipe and doesn\'t stop the corrosion.' },
+        { t:'Paint the joint so air and water can\'t reach the metals', ok:false, why:'The corrosion happens through the water inside the pipe. Paint on the outside won\'t stop it.' } ],
+  done:'The dielectric union\'s plastic insulator keeps the two metals apart, so the corrosion stops.' },
+(g, P, i) => {
+  const gm = MAT.galv(), cm = MAT.copper(), dk = MAT.galvDark();
+  cyl(g, V(-2.6, 1.6), V(-.2, 1.6), .1, gm); for (const x of [-.4, -.35, -.3]) ring(g, V(x, 1.6), XAX, .1, .008, dk);
+  cyl(g, V(.12, 1.6), V(2.6, 1.6), .095, cm);
+  lbl(g, 'Galvanized steel', V(-1.6, 2.0, .2)); lbl(g, 'Copper', V(1.6, 2.0, .2));
+  part(g, P.broken, p => {
+    sleeve(p, V(-.05, 1.6), XAX, .36, .125, std(0xa9663a, .5, .6));
+    const cols = [0x6fae95, 0xdfe6d3, 0x8a4a24, 0x5f9e84, 0xa0522d];
+    for (let k = 0; k < 60; k++) { const a = Math.random() * Math.PI * 2, x = -.4 + Math.random() * .55, rr = .118 + Math.random() * .012; const s = sph(p, V(x, 1.6 + Math.sin(a) * rr, Math.cos(a) * rr), .014 + Math.random() * .022, std(cols[k % 5], 1)); s.scale.set(1.6, .7 + Math.random() * .6, 1.2); }
+    ring(p, V(-.5, 1.6), XAX, .1, .025, std(0x8a4a24, 1)); ring(p, V(-.7, 1.6), XAX, .1, .018, std(0x9a5a2a, 1));
+    box(p, .05, .5, .02, V(-.15, 1.28, .1), std(0x8a4a24, 1));
+  });
+  part(g, P.fixed, p => {
+    const y = MAT.yellow(), br = MAT.brass();
+    cyl(p, V(-.36, 1.6), V(-.13, 1.6), .13, MAT.galv(), 6); cyl(p, V(-.13, 1.6), V(-.08, 1.6), .14, y, 32);
+    cyl(p, V(-.1, 1.6), V(.04, 1.6), .16, br, 6); cyl(p, V(.04, 1.6), V(.16, 1.6), .11, br);
+    const s = sprite('Dielectric union', .24, { bg:'rgba(30,110,60,.92)', size:40 }); s.position.set(-.1, 1.95, .2); p.add(s);
+  });
+  addDrip(i, V(-.08, 1.45, .05));
+});
+
+// (b) compression fitting missing ferrule
+scenario({ title:'Dripping shutoff valve', see:'A shutoff valve under a sink drips where the copper pipe goes into the valve. The nut is loose and backed off.',
+  cam:{ tgt:V(0, 1.55, .15), cam:V(1.25, 1.95, 1.7) },
+  diag:[ { t:'The valve handle is turned the wrong way', ok:false, why:'The handle controls flow out of the valve. It doesn\'t affect a leak where the pipe enters it.' },
+         { t:'The supply line is the wrong color for a cold line', ok:false, why:'Color doesn\'t matter here. The water is leaking at the compression nut.' },
+         { t:'The compression nut has no ferrule, so nothing is sealing the joint', ok:true, why:'Right. The brass ferrule is what actually seals. Without it the nut can\'t squeeze anything.' },
+         { t:'The water pressure is too low for this valve', ok:false, why:'Low pressure doesn\'t cause leaks. High pressure can, but the real problem is the missing ferrule.' } ],
+  fix:[ { t:'Crank the nut as tight as it will go with a big wrench', ok:false, why:'There\'s no ferrule to squeeze. And with a ferrule, cranking it crushes the ring and causes leaks.' },
+        { t:'Wrap Teflon tape around the pipe where the ferrule goes', ok:false, why:'Compression joints seal with the ferrule, not tape. Tape there can actually stop it from seating.' },
+        { t:'Glue the nut onto the valve body with PVC cement', ok:false, why:'PVC cement doesn\'t bond to brass. And the valve could never be removed again.' },
+        { t:'Shut off the water, add a new ferrule, then hand-tight plus a half turn', ok:true, why:'Yes. New ferrule, nut snug, then about a half turn more with a wrench. Snug, not cranked.' } ],
+  done:'With a new ferrule, the nut squeezes the ring onto the pipe and seals.' },
+(g, P, i) => {
+  const cm = MAT.copper(), ch = MAT.chrome();
+  cyl(g, V(0, 1.5, -.64), V(0, 1.5, .34), .06, cm);
+  cyl(g, V(0, 1.5, -.63), V(0, 1.5, -.6), .16, ch, 40);
+  cyl(g, V(0, 1.5, .32), V(0, 1.5, .55), .08, ch); cyl(g, V(0, 1.5, .44), V(0, 1.86, .44), .05, ch);
+  cyl(g, V(0, 1.72, .44), V(0, 1.8, .44), .07, ch, 6);
+  const h = cyl(g, V(0, 1.5, .55), V(0, 1.5, .6), .1, std(0xeeeeee, .4)); h.scale.x = 1.5;
+  tube(g, roundedPath([V(0, 1.84, .44), V(0, 2.4, .44), V(0, 3.2, .1)], .3), .025, std(0xb7bec3, .55, .7));
+  lbl(g, 'Shutoff valve', V(.35, 2.0, .44)); lbl(g, 'Copper pipe', V(.25, 1.25, -.2));
+  const nut = new THREE.Group(); g.add(nut); cyl(nut, V(0, 0, -.05), V(0, 0, .05), .095, MAT.chrome(), 6); nut.position.set(0, 1.5, .1);
+  nut.userData.broken = V(0, 1.5, .1); nut.userData.fixed = V(0, 1.5, .3);
+  part(g, P.fixed, p => { ring(p, V(0, 1.5, .25), ZAX, .066, .016, MAT.brass()); const s = sprite('New ferrule', .24, { bg:'rgba(30,110,60,.92)', size:40 }); s.position.set(-.45, 1.75, .3); p.add(s); });
+  SCEN_EXTRA[i] = { nut };
+  addDrip(i, V(0, 1.42, .2));
+});
+
+// (c) PVC on hot water
+scenario({ title:'Sagging hot water line', see:'The hot line leaving the water heater is white plastic. It\'s sagging, looks yellowed, and leaks at a joint.',
+  cam:{ tgt:V(0, 2.0, 0), cam:V(.6, 2.6, 5.4) },
+  diag:[ { t:'The pipe is just dirty and needs a good cleaning', ok:false, why:'Dirt doesn\'t make pipe sag or leak. The heat is softening it.' },
+         { t:'PVC is on a hot line. It isn\'t rated for hot water and softens', ok:true, why:'Right. PVC is a drain pipe, rated only to about 140°F. Hot supply water makes it soft, saggy, and leaky.' },
+         { t:'The water heater is set too cold for this kind of pipe', ok:false, why:'Colder water would actually be easier on PVC. The real problem is using PVC for hot supply at all.' },
+         { t:'PVC is fine here. The joint just needs more cement', ok:false, why:'PVC is not approved for hot water supply. More glue won\'t fix the wrong material.' } ],
+  fix:[ { t:'Wrap the PVC in foam pipe insulation to keep it cooler', ok:false, why:'The heat comes from the water inside. Insulation would actually keep the pipe hotter.' },
+        { t:'Switch to black ABS, since it handles heat better', ok:false, why:'ABS is also a drain-only pipe. It isn\'t rated for hot water supply either.' },
+        { t:'Replace it with PEX or CPVC, which are rated for hot water', ok:true, why:'Yes. PEX and CPVC are both made for hot water supply. Here it\'s red PEX, with metal pipe at the heater.' },
+        { t:'Add more PVC cement to every joint on the line', ok:false, why:'The pipe itself is the wrong material. Extra glue won\'t stop it from softening.' } ],
+  done:'Red PEX is rated for hot water, so the line won\'t soften or sag.' },
+(g, P, i) => {
+  const wh = std(0xe9e4d8, .5, .1);
+  cyl(g, V(-1.9, .02), V(-1.9, 2.2), .55, wh, 40); cyl(g, V(-1.9, 2.2), V(-1.9, 2.28), .55, std(0xb9b4a8, .45, .3), 40, .5);
+  decal(g, 'WATER HEATER', .12, V(-1.9, 1.3, .555), { color:'#3a3f44' });
+  cyl(g, V(-1.65, 2.25), V(-1.65, 2.62), .075, MAT.copper());
+  const s = sprite('HOT  120–140°F', .25, { bg:'rgba(200,48,44,.92)', size:40 }); s.position.set(-1.9, 2.55, .7); g.add(s);
+  part(g, P.broken, p => {
+    const m = std(0xeee5c8, .55), pur = MAT.purple();
+    cyl(p, V(-1.65, 2.58), V(-1.65, 2.72), .105, std(0xe6e0c8, .55));
+    const c = new THREE.CatmullRomCurve3([V(-1.65, 2.66), V(-1.65, 2.82), V(-1.45, 2.9), V(-.6, 2.78), V(.35, 2.55), V(1.3, 2.72), V(2.6, 2.9)]);
+    tube(p, c, .085, m, 120); sleeve(p, V(.35, 2.555), V(1, .05, 0), .24, .11, std(0xe6e0c8, .55)); ring(p, V(.25, 2.555), XAX, .11, .009, pur); ring(p, V(.45, 2.56), XAX, .11, .009, pur);
+    decal(p, 'PVC SCH 40', .06, V(1.5, 2.77, .088), { color:'#444' });
+  });
+  part(g, P.fixed, p => {
+    cyl(p, V(-1.65, 2.58), V(-1.65, 2.7), .09, MAT.brass(), 6);
+    tube(p, roundedPath([V(-1.65, 2.68), V(-1.65, 2.9), V(-1.3, 2.9), V(2.6, 2.9)], .25), .075, MAT.pexR());
+    const s2 = sprite('PEX: rated for hot water', .24, { bg:'rgba(30,110,60,.92)', size:40 }); s2.position.set(.6, 3.2, .2); p.add(s2);
+  });
+  addDrip(i, V(.35, 2.43, .05)); addGas(i, V(.35, 2.6, .05), 0xffffff);
+});
+
+// (d) PEX crimp ring misplaced
+scenario({ title:'Leaky new PEX joint', see:'A new PEX joint drips right at the fitting. The PEX is see-through here so you can look at the barbs and the copper ring.',
+  cam:{ tgt:V(.2, 1.6, 0), cam:V(.5, 2.1, 2.6) },
+  diag:[ { t:'The PEX is the wrong color for this line', ok:false, why:'PEX color is only a label. All three colors are the same pipe.' },
+         { t:'The fitting needs Teflon tape on the barbs', ok:false, why:'Barbed crimp fittings never use tape. The ring squeezing over the barbs makes the seal.' },
+         { t:'PEX can\'t be used on a cold water line', ok:false, why:'PEX is approved for both hot and cold water supply.' },
+         { t:'The crimp ring is off the barbs, so it isn\'t squeezing the fitting', ok:true, why:'Right. The ring is sitting on bare PEX past the barbs, so nothing presses the pipe onto the fitting.' } ],
+  fix:[ { t:'Cut off the bad end, set a new ring ⅛–¼″ from the end, crimp it, and check with a go/no-go gauge', ok:true, why:'Yes. Ring over the barbs, crimped square, and gauge-checked.' },
+        { t:'Crimp the old ring a second time right where it sits now', ok:false, why:'It would still be off the barbs. It has to sit over the barbs to seal.' },
+        { t:'Heat the PEX with a torch so it shrinks onto the fitting', ok:false, why:'Never use a torch on PEX. It damages the pipe.' },
+        { t:'Wrap the joint tightly with electrical tape', ok:false, why:'Tape can\'t hold back water pressure. The joint has to be redone.' } ],
+  done:'The ring now sits over the barbs and is crimped down. The go/no-go gauge confirms it.' },
+(g, P, i) => {
+  const cm = MAT.copper(), br = MAT.brass();
+  cyl(g, V(-2.6, 1.6), V(-.36, 1.6), .07, cm);
+  cyl(g, V(-.42, 1.6), V(-.12, 1.6), .085, br); cyl(g, V(-.14, 1.6), V(-.06, 1.6), .1, br, 6);
+  cyl(g, V(-.06, 1.6), V(.36, 1.6), .05, br); for (const x of [.04, .14, .24]) ring(g, V(x, 1.6), XAX, .055, .012, br);
+  const pex = cyl(g, V(-.02, 1.6), V(2.6, 1.6), .075, std(0xf2f2ee, .4, 0, { transparent:true, opacity:.5, depthWrite:false }));
+  pex.castShadow = false; pex.renderOrder = 2;
+  lbl(g, 'Copper', V(-1.5, 1.9, .1)); lbl(g, 'PEX', V(1.6, 1.9, .1)); lbl(g, 'barbs', V(.14, 1.42, .15));
+  part(g, P.broken, p => { const r = cyl(p, V(.7, 1.6), V(.78, 1.6), .088, std(0xb5683a, .35, .75)); r.rotation.z += .0; r.rotateX(.25); });
+  part(g, P.fixed, p => {
+    cyl(p, V(.1, 1.6), V(.19, 1.6), .082, std(0xb5683a, .35, .75));
+    const s = sprite('Go/no-go gauge ✓', .24, { bg:'rgba(30,110,60,.92)', size:40 }); s.position.set(.15, 1.9, .15); p.add(s);
+  });
+  addDrip(i, V(0, 1.5, .03));
+});
+
+// (e) cracked cast iron
+scenario({ title:'Old drain with a dark line', see:'An old cast iron drain has a dark jagged line, rust stains, and water dripping under it.',
+  cam:{ tgt:V(0, 1.0, 0), cam:V(.6, 1.8, 3.6) },
+  diag:[ { t:'The old cast iron has rusted through and cracked', ok:true, why:'Right. Cast iron rusts from the inside out. After decades it cracks, like this.' },
+         { t:'The drain needs a P-trap added right here', ok:false, why:'Traps go at each fixture. This is a crack in the pipe wall.' },
+         { t:'The vent pipe is too big for this drain', ok:false, why:'Vent size doesn\'t crack pipe. The dark line is a crack from rust and age.' },
+         { t:'Water hammer from the supply lines is shaking it loose', ok:false, why:'Water hammer happens in pressurized supply lines, not gravity drains.' } ],
+  fix:[ { t:'Patch the crack with duct tape and keep an eye on it', ok:false, why:'Tape won\'t hold, and the rest of that section is rotting too.' },
+        { t:'Cut out the bad section and splice in PVC or ABS with shielded no-hub couplings', ok:true, why:'Yes. That\'s the standard repair. The shielded couplings join new plastic to old iron.' },
+        { t:'Replace that section with PEX tubing', ok:false, why:'PEX is supply pipe. Drains need rigid DWV pipe like PVC or ABS.' },
+        { t:'Brush on rust paint and call it done', ok:false, why:'Paint doesn\'t seal a crack. Water will keep coming through.' } ],
+  done:'The cracked section is gone. Shielded no-hub couplings join the new PVC to the old iron.' },
+(g, P, i) => {
+  const im = MAT.iron();
+  cyl(g, V(-2.6, 1.0), V(-.75, 1.0), .22, im, 32); cyl(g, V(.85, 1.0), V(2.6, 1.0), .22, im, 32);
+  sleeve(g, V(-1.7, 1.0), XAX, .3, .28, im, 32);
+  for (const x of [-2.1, 2.1]) { box(g, .06, 2.4, .04, V(x, 2.4, 0), std(0x777777, .5, .6)); ring(g, V(x, 1.0), XAX, .24, .02, std(0x777777, .5, .6)); }
+  lbl(g, 'Cast iron drain', V(-1.6, 1.5, .25));
+  part(g, P.broken, p => {
+    cyl(p, V(-.75, 1.0), V(.85, 1.0), .22, MAT.iron(), 32);
+    const crack = std(0x050505, 1); const pts = [[-.35, 1.12], [-.22, 1.04], [-.1, 1.1], [.02, .99], [.14, 1.06], [.26, .95], [.38, 1.02], [.5, .93]];
+    for (let k = 0; k < pts.length - 1; k++) { const a = V(pts[k][0], pts[k][1], .216), b = V(pts[k + 1][0], pts[k + 1][1], .216); const m = cyl(p, a, b, .012, crack, 6); }
+    const rs = MAT.rust(); for (const [x, y, s] of [[-.2, 1.15, 1.2], [.3, .9, 1.4], [.05, .86, 1], [.55, 1.08, .8]]) { const m = sph(p, V(x, y, .2), .07 * s, rs); m.scale.set(1.4, 1, .3); }
+    box(p, .1, .02, .25, V(.15, .78, .05), std(0x1a1512, .9));
+  });
+  part(g, P.fixed, p => {
+    cyl(p, V(-.6, 1.0), V(.7, 1.0), .21, MAT.pvc(), 32);
+    const sh = MAT.band();
+    for (const x of [-.72, .82]) { sleeve(p, V(x, 1.0), XAX, .32, .245, sh, 32); ring(p, V(x - .1, 1.0), XAX, .25, .02, sh); ring(p, V(x + .1, 1.0), XAX, .25, .02, sh); }
+    const s = sprite('PVC + shielded no-hub couplings', .24, { bg:'rgba(30,110,60,.92)', size:40 }); s.position.set(.05, 1.45, .25); p.add(s);
+  });
+  addDrip(i, V(.15, .76, .08));
+});
+
+// (f) missing P-trap
+scenario({ title:'Bathroom smells like sewer', see:'The bathroom smells like sewer. Look under the sink and at what\'s coming up out of the drain.',
+  cam:{ tgt:V(0, 1.8, .1), cam:V(1.8, 2.4, 3.8) },
+  diag:[ { t:'The faucet supply line is leaking gas', ok:false, why:'Supply lines carry clean water. The smell is coming up from the drain.' },
+         { t:'The drain pipe is too long for the sink', ok:false, why:'Length isn\'t the issue. There\'s no water seal to block the sewer gas.' },
+         { t:'The vent is pushing fresh air into the room', ok:false, why:'Vents let air into the drain system so traps work. They don\'t push sewer smell into rooms.' },
+         { t:'There\'s no P-trap, so sewer gas comes straight up the drain', ok:true, why:'Right. The drain goes straight to the wall with no bend to hold water, so nothing blocks the gas.' } ],
+  fix:[ { t:'Leave the drain stopper closed whenever the sink isn\'t in use', ok:false, why:'That only works while it\'s closed. Code requires a trap with a water seal.' },
+        { t:'Spray air freshener down the drain every week', ok:false, why:'That covers the smell. Sewer gas can be unhealthy, so it has to be blocked.' },
+        { t:'Add a longer straight tailpiece to the drain', ok:false, why:'A straight pipe still holds no water, so the gas still gets through.' },
+        { t:'Install a P-trap under the sink so it holds a water seal', ok:true, why:'Yes. The water sitting in the bend blocks sewer gas. Every fixture needs one.' } ],
+  done:'The trap\'s water seal now blocks the sewer gas, so the smell is gone.' },
+(g, P, i) => {
+  const ceramic = std(0xf7f7f5, .2, .05);
+  box(g, 1.4, .25, .9, V(0, 2.5, .3), ceramic);
+  const bowl = new THREE.Mesh(new THREE.CylinderGeometry(.48, .48, .02, 40), std(0xe2e4e6, .25)); bowl.scale.z = .68; bowl.position.set(0, 2.63, .35); g.add(bowl);
+  cyl(g, V(0, 2.64, .35), V(0, 2.65, .35), .05, std(0x222222, .5));
+  cyl(g, V(0, 1.4, -.64), V(0, 1.4, -.15), .08, MAT.pvc()); cyl(g, V(0, 1.4, -.64), V(0, 1.4, -.6), .15, MAT.chrome(), 40);
+  lbl(g, 'Wall drain', V(-.6, 1.25, -.3)); lbl(g, 'Sink', V(-.9, 2.8, .3));
+  part(g, P.broken, p => { const ch = MAT.chrome(); run(p, [V(0, 2.38, .35), V(0, 1.4, .35), V(0, 1.4, -.17)], .06, ch); });
+  part(g, P.fixed, p => {
+    const m = MAT.pvc(); cyl(p, V(0, 2.38, .35), V(0, 1.86, .35), .06, MAT.chrome());
+    const c = new THREE.CatmullRomCurve3([V(0, 1.9, .35), V(0, 1.58, .35), V(0, 1.38, .29), V(0, 1.32, .18), V(0, 1.36, .06), V(0, 1.4, -.04), V(0, 1.4, -.17)]);
+    tube(p, c, .07, m, 90); ring(p, V(0, 1.88, .35), UP, .08, .028, m);
+    const w = new THREE.Mesh(new THREE.SphereGeometry(.05, 12, 8), std(0x4aa3ff, .1, 0, { transparent:true, opacity:.8 })); w.position.set(0, 1.33, .18); p.add(w);
+    const s = sprite('P-trap (water seal)', .24, { bg:'rgba(30,110,60,.92)', size:40 }); s.position.set(.6, 1.35, .3); p.add(s);
+  });
+  addGas(i, V(0, 2.66, .35), 0x7dff6a); addGas(i, V(0, 2.66, .38), 0x9bff5a);
+});
+
+// drop + gas pools
+const dropMat = std(0x8fd0ff, .1, .1, { transparent:true, opacity:.9 });
+const dropPool = Array.from({ length:50 }, () => { const m = new THREE.Mesh(new THREE.SphereGeometry(.028, 10, 8), dropMat); m.scale.set(1, 1.5, 1); m.visible = false; m.userData = { v:0, src:null }; bench.add(m); return m; });
+const puffTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); const gr = g.createRadialGradient(32, 32, 2, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+const puffPool = Array.from({ length:60 }, () => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map:puffTex, transparent:true, opacity:0, depthWrite:false })); s.visible = false; s.userData = { life:0 }; bench.add(s); return s; });
+
+// ---------- Audio ----------
+let actx = null;
+function ensureAudio() { if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (actx && actx.state === 'suspended') actx.resume(); }
+function tone(f, d, type = 'sine', v = .12, delay = 0) { if (!actx) return; const t = actx.currentTime + delay; const o = actx.createOscillator(), g = actx.createGain(); o.type = type; o.frequency.value = f; g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.001, t + d); o.connect(g).connect(actx.destination); o.start(t); o.stop(t + d + .02); }
+const good = () => { tone(660, .12); tone(990, .18, 'sine', .12, .1); };
+const bad = () => tone(170, .25, 'square', .06);
+window.addEventListener('pointerdown', ensureAudio);
+
+// ---------- Highlight + camera ----------
+const hlBox = new THREE.Box3(); const hlHelper = new THREE.Box3Helper(hlBox, 0xffd400); hlHelper.visible = false; scene.add(hlHelper);
+let hl = null; // {id, mats}
+function setHighlight(id) {
+  if (hl) for (const m of hl.mats) { m.emissive.set(0x000000); m.emissiveIntensity = 1; }
+  hl = null; hlHelper.visible = false;
+  if (!id) return;
+  const mats = new Set(); pieces[id].group.traverse(o => { if (o.isMesh && o.material.emissive) mats.add(o.material); });
+  hl = { id, mats:[...mats] }; for (const m of hl.mats) m.emissive.set(0xffaa00);
+  hlBox.setFromObject(pieces[id].group).expandByScalar(.06); hlHelper.visible = true;
+}
+let camTween = null;
+function flyTo(tgt, cam, dur = .9) { camTween = { t:0, dur, t0:controls.target.clone(), t1:tgt.clone(), c0:camera.position.clone(), c1:cam.clone() }; }
+controls.addEventListener('start', () => { camTween = null; });
+function focusPiece(id) {
+  const b = new THREE.Box3().setFromObject(pieces[id].group); const c = b.getCenter(V()); const size = b.getSize(V()).length();
+  const dist = THREE.MathUtils.clamp(size * 1.5, 2.4, 8.5);
+  flyTo(c, c.clone().add(V(.35, .3, 1).normalize().multiplyScalar(dist)));
+}
+
+// ---------- Picking ----------
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(); let downAt = null;
+function pickAt(e) {
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hit = ray.intersectObjects(pickables, false)[0]; if (!hit) return null;
+  let o = hit.object; while (o && !o.userData.pieceId) o = o.parent; return o ? o.userData.pieceId : null;
+}
+renderer.domElement.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!downAt) return; const dx = e.clientX - downAt[0], dy = e.clientY - downAt[1]; downAt = null;
+  if (dx * dx + dy * dy > 64 || mode !== 'explore') return;
+  const id = pickAt(e); if (id) select(id, false);
+});
+renderer.domElement.addEventListener('pointermove', e => {
+  if (e.buttons || mode !== 'explore' || e.pointerType !== 'mouse') return;
+  renderer.domElement.style.cursor = pickAt(e) ? 'pointer' : 'grab';
+});
+
+// ---------- Explore ----------
+function cardHTML(id) {
+  const d = INFO[id], s = SIDE[d.side];
+  return `<div class="ct">${d.name}</div><div class="tags"><span class="tag ${s[0]}">${s[1]}</span><span class="tag">${d.cat}</span>${d.old ? '<span class="tag old">Old homes</span>' : ''}</div>
+  <p>${d.what}</p><div class="row"><b>Used for</b> ${d.where}</div><div class="row"><b>Joined by</b> ${d.join}</div>
+  <div class="row"><b>Pros</b> ${d.pros}</div><div class="row"><b>Cons</b> ${d.cons}</div><div class="row"><b>Fails by</b> ${d.fail}</div>`;
+}
+let selected = null;
+function select(id, fly) {
+  selected = id; setHighlight(id); $('card').innerHTML = cardHTML(id);
+  document.querySelectorAll('#sec-explore .chip').forEach(c => c.classList.toggle('on', c.dataset.id === id));
+  if (fly) focusPiece(id);
+}
+for (const id of IDS) {
+  const b = document.createElement('button'); b.className = 'chip'; b.textContent = INFO[id].name; b.dataset.id = id;
+  b.onclick = () => select(id, true); $(INFO[id].cat === 'Pipe' ? 'chipsPipe' : 'chipsFit').appendChild(b);
+}
+$('lblTog').onchange = () => applyLabels();
+$('flowTog').onchange = () => flows.forEach(f => f.mesh.visible = $('flowTog').checked);
+$('homeBtn').onclick = () => flyTo(HOME.tgt, HOME.cam);
+function applyLabels() { const on = mode === 'explore' && $('lblTog').checked; for (const id of IDS) labels[id].visible = on; }
+
+// ---------- Identify ----------
+const idS = { right:0, total:0, cur:null, opts:[], answered:false, last:[] };
+function idRound() {
+  const pool = IDS.filter(x => !idS.last.includes(x)); const cur = pool[Math.floor(Math.random() * pool.length)];
+  idS.last.push(cur); if (idS.last.length > 6) idS.last.shift();
+  const same = shuffle(IDS.filter(x => x !== cur && INFO[x].cat === INFO[cur].cat && !(cur.startsWith('pex') && x.startsWith('pex'))));
+  const other = shuffle(IDS.filter(x => x !== cur && !same.includes(x) && !(cur.startsWith('pex') && x.startsWith('pex'))));
+  idS.cur = cur; idS.opts = shuffle([cur, ...same.slice(0, 2), ...other.slice(0, 1)]); idS.answered = false;
+  setHighlight(cur); focusPiece(cur); renderId();
+}
+function renderId() {
+  $('idScore').textContent = `Score: ${idS.right} / ${idS.total}`;
+  $('idOpts').innerHTML = idS.opts.map((x, k) => `<button class="opt" data-k="${k}"><span class="L">${LET[k]}.</span> ${INFO[x].name}</button>`).join('');
+  $('idOpts').querySelectorAll('.opt').forEach(b => b.onclick = () => idAnswer(+b.dataset.k));
+  $('idFb').innerHTML = ''; $('idNext').disabled = true; updatePills();
+}
+function idAnswer(k) {
+  if (idS.answered) return; idS.answered = true; idS.total++;
+  const pick = idS.opts[k], ok = pick === idS.cur; if (ok) { idS.right++; good(); } else bad();
+  $('idOpts').querySelectorAll('.opt').forEach((b, j) => { b.disabled = true; if (idS.opts[j] === idS.cur) b.classList.add('right'); else if (j === k) b.classList.add('wrong'); });
+  const d = INFO[idS.cur];
+  $('idFb').innerHTML = `<div class="fb ${ok ? 'ok' : 'bad'}">${ok ? '✔ Yes!' : `✘ Not quite. That's the <b>${d.name}</b>.`} ${d.what} <i>${d.where}</i></div>`;
+  $('idScore').textContent = `Score: ${idS.right} / ${idS.total}`; $('idNext').disabled = false; updatePills();
+}
+$('idNext').onclick = idRound;
+
+// ---------- Fix-it ----------
+const fx = { idx:0, step:'diag', order:{}, marks:{}, msg:{}, miss:{}, res:Array(SCEN.length).fill(null) };
+const tweens = [];
+function tween(obj, kind, to, dur, delay = 0) { tweens.push({ obj, kind, from:kind === 'pos' ? obj.position.clone() : obj.scale.x, to, dur, delay, t:0 }); if (kind === 'scale' && to > .01) { obj.visible = true; obj.scale.setScalar(.001); } }
+function loadScenario(i) {
+  fx.idx = i; fx.step = 'diag'; fx.marks = { diag:{}, fix:{} }; fx.msg = {}; fx.miss = { diag:0, fix:0 };
+  const s = SCEN[i]; fx.order = { diag:shuffle([0, 1, 2, 3]), fix:shuffle([0, 1, 2, 3]) };
+  SCEN.forEach((sc, j) => sc.group.visible = j === i);
+  for (const p of s.broken) { p.visible = true; p.scale.setScalar(1); }
+  for (const p of s.fixed) { p.visible = false; p.scale.setScalar(.001); }
+  if (SCEN_EXTRA[i]) SCEN_EXTRA[i].nut.position.copy(SCEN_EXTRA[i].nut.userData.broken);
+  tweens.length = 0;
+  for (const d of drips) { d.on = d.scen === i; if (d.scen === i) d.pud.scale.setScalar(.6); else d.pud.scale.setScalar(.01); }
+  for (const g of gases) g.on = g.scen === i;
+  flyTo(s.cam.tgt, s.cam.cam); renderFix();
+}
+function applyFix() {
+  const i = fx.idx, s = SCEN[i];
+  for (const p of s.broken) tween(p, 'scale', 0, .5);
+  s.fixed.forEach((p, k) => tween(p, 'scale', 1, .6, .45 + k * .1));
+  if (SCEN_EXTRA[i]) tween(SCEN_EXTRA[i].nut, 'pos', SCEN_EXTRA[i].nut.userData.fixed, .7, .9);
+  setTimeout(() => { for (const d of drips) if (d.scen === i) d.on = false; for (const g of gases) if (g.scen === i) g.on = false; }, 700);
+}
+function stepHTML(key, title, opts) {
+  const solved = Object.values(fx.marks[key]).includes('right');
+  let h = `<div class="step">${title}</div>`;
+  fx.order[key].forEach((oi, k) => { const m = fx.marks[key][oi] || ''; h += `<button class="opt ${m}" data-step="${key}" data-oi="${oi}" ${solved || m ? 'disabled' : ''}><span class="L">${LET[k]}.</span> ${opts[oi].t}</button>`; });
+  if (fx.msg[key]) h += `<div class="fb ${fx.msg[key][0]}">${fx.msg[key][1]}</div>`;
+  return h;
+}
+function renderFix() {
+  const s = SCEN[fx.idx];
+  const fixedN = fx.res.filter(Boolean).length, perfect = fx.res.filter(r => r === 'perfect').length;
+  $('fixScore').textContent = `Repairs done: ${fixedN} / ${SCEN.length} · Perfect (no wrong picks): ${perfect}`;
+  $('fixChips').innerHTML = SCEN.map((sc, j) => `<button class="chip ${j === fx.idx ? 'on' : ''} ${fx.res[j] ? 'done' : ''}" data-j="${j}">${fx.res[j] ? '✓ ' : ''}${j + 1}</button>`).join('');
+  $('fixChips').querySelectorAll('.chip').forEach(b => b.onclick = () => loadScenario(+b.dataset.j));
+  let h = `<div class="stitle">${fx.idx + 1}. ${s.title}</div><div class="see">👀 ${s.see}</div>`;
+  h += stepHTML('diag', 'Step 1 · What\'s wrong?', s.diag);
+  if (fx.step !== 'diag') h += stepHTML('fix', 'Step 2 · Best repair?', s.fix);
+  if (fx.step === 'done') h += `<div class="fb ok">✅ <b>Fixed!</b> ${s.done}</div><button class="btn" id="fixNext">${fixedN === SCEN.length ? 'All fixed! Start over' : 'Next problem →'}</button>`;
+  $('fixBody').innerHTML = h;
+  $('fixBody').querySelectorAll('.opt').forEach(b => b.onclick = () => fixAnswer(b.dataset.step, +b.dataset.oi));
+  const nb = $('fixNext'); if (nb) nb.onclick = () => { if (fixedN === SCEN.length) fx.res.fill(null); const nxt = fx.res.findIndex((r, j) => !r && j > fx.idx); loadScenario(nxt >= 0 ? nxt : Math.max(0, fx.res.findIndex(r => !r))); };
+  updatePills();
+}
+function fixAnswer(key, oi) {
+  if (key !== fx.step) return;
+  const s = SCEN[fx.idx], o = (key === 'diag' ? s.diag : s.fix)[oi];
+  if (o.ok) {
+    good(); fx.marks[key][oi] = 'right'; fx.msg[key] = ['ok', '✔ ' + o.why];
+    if (key === 'diag') fx.step = 'fix';
+    else { fx.step = 'done'; fx.res[fx.idx] = (fx.miss.diag + fx.miss.fix) === 0 ? 'perfect' : 'fixed'; applyFix(); }
+  } else { bad(); fx.miss[key]++; fx.marks[key][oi] = 'wrong'; fx.msg[key] = ['bad', '✘ ' + o.why + ' Try again.']; }
+  renderFix();
+}
+
+// ---------- Quiz ----------
+const QUIZ = [
+  { q:'You\'re running a new hot water line to a bathroom sink. Which pipe is the right choice?', a:1, o:[
+    'PVC Schedule 40, because it\'s cheap and solvent-glues together fast.',
+    'PEX, because it\'s rated for hot water and bends around the framing.',
+    'ABS, because the black plastic holds up to heat better than white PVC.',
+    'Cast iron, because its thick walls keep the water hot the longest.'],
+    ex:'PEX is rated for hot water supply. PVC and ABS are drain-only plastics, and cast iron is an old drain material.' },
+  { q:'You need to connect new copper pipe to an old galvanized steel pipe. What goes between them?', a:3, o:[
+    'A PVC coupling, so the plastic keeps the water away from both metals.',
+    'A compression fitting, because its brass ferrule seals both metals tight.',
+    'A standard threaded coupling, since both pipes can take the same threads.',
+    'A dielectric union, because it keeps the two metals from corroding each other.'],
+    ex:'Copper touching steel causes galvanic corrosion that eats the steel. A dielectric union puts an insulator between them.' },
+  { q:'Where is white Schedule 40 PVC normally used in a house?', a:0, o:[
+    'Drain, waste, and vent lines, where water flows out by gravity alone.',
+    'Hot water supply lines running from the water heater to the sinks.',
+    'Gas lines feeding the furnace and water heater, since it can\'t rust.',
+    'Hot water recirculation loops, because it handles constant heat well.'],
+    ex:'Schedule 40 PVC is for DWV (drain, waste, vent). It\'s not rated for hot water and isn\'t used for gas inside homes.' },
+  { q:'What\'s the difference between copper Type L and Type M?', a:2, o:[
+    'Type M has the thickest walls and is the one made for buried service lines.',
+    'Type L has thinner walls and is only used on drain and vent lines.',
+    'Type L has thicker walls than Type M, and both are used for water supply.',
+    'They are the same pipe, and the letter only shows which brand made it.'],
+    ex:'Type L (blue print) has thicker walls than Type M (red print). Both are used for home water supply.' },
+  { q:'Where does a push-fit (SharkBite-style) fitting make the most sense?', a:0, o:[
+    'A quick repair in a spot you can reach later, like under a sink.',
+    'Buried in a concrete slab, since the O-ring never needs to be checked.',
+    'On a PVC drain line, because it\'s designed to seal gravity drain pipes.',
+    'On a gas line, because the metal teeth grip tighter than pipe threads do.'],
+    ex:'Push-fit fittings are fast and need no torch or glue. They\'re best where you can reach them to check or remove them.' },
+  { q:'You find gray galvanized steel supply pipe in a 1950s house. What\'s true about it?', a:3, o:[
+    'It lasts forever, because the zinc coating inside never wears through.',
+    'It\'s the newest pipe type, so it should be kept during a remodel.',
+    'It can connect straight to copper, since both of them are metal pipes.',
+    'It rusts inside over time, which cuts water pressure and stains water.'],
+    ex:'Galvanized pipe rusts from the inside and narrows. It\'s an aging legacy material that\'s usually replaced.' },
+  { q:'What does the P-trap under a sink do?', a:1, o:[
+    'Speeds up draining by pushing waste downhill with extra water pressure.',
+    'Holds water in its bend so sewer gas can\'t come up into the house.',
+    'Catches hair and grease so the main sewer line never needs cleaning.',
+    'Lets fresh air into the drain pipe so the sink empties out faster.'],
+    ex:'The water held in the bend seals out sewer gas. Letting air into drains is the vent\'s job, not the trap\'s.' },
+  { q:'How is a PEX crimp joint made?', a:2, o:[
+    'Clean the ends, brush on flux, and heat the joint with a torch.',
+    'Brush on primer and solvent cement, then push the pipe into the hub.',
+    'Squeeze a copper ring over the barbed fitting, then check it with a gauge.',
+    'Thread both ends of the pipe and seal the threads with Teflon tape.'],
+    ex:'A copper ring is crimped over the barbs and checked with a go/no-go gauge. Torches are for copper, cement is for PVC.' },
+];
+const qz = { i:0, picks:[], done:false };
+function renderQuiz() {
+  const el = $('quizBody');
+  if (qz.done) {
+    const right = qz.picks.filter((p, i) => p === QUIZ[i].a).length;
+    let h = `<div class="big">${right} / ${QUIZ.length}</div><div class="fb ${right >= 6 ? 'ok' : 'info'}">${right === QUIZ.length ? 'Perfect score! You know your pipes.' : right >= 6 ? 'Nice work. Review the ones you missed below.' : 'Good start. Read the explanations, use Explore, and try again.'}</div>`;
+    QUIZ.forEach((q, i) => { const ok = qz.picks[i] === q.a; h += `<div class="rev ${ok ? '' : 'x'}"><b>${i + 1}. ${q.q}</b><br>${ok ? '✔' : '✘'} You picked: ${LET[qz.picks[i]]}. ${q.o[qz.picks[i]]}${ok ? '' : `<br>✔ Correct: ${LET[q.a]}. ${q.o[q.a]}`}<div class="ex">${q.ex}</div></div>`; });
+    h += `<button class="btn" id="qRetry">Retake quiz</button>`; el.innerHTML = h;
+    $('qRetry').onclick = () => { qz.i = 0; qz.picks = []; qz.done = false; renderQuiz(); };
+    updatePills(); return;
+  }
+  const q = QUIZ[qz.i], pick = qz.picks[qz.i];
+  let h = `<div class="score">Question ${qz.i + 1} of ${QUIZ.length}</div><div class="q">${q.q}</div>`;
+  q.o.forEach((t, k) => { h += `<button class="opt ${pick === k ? 'pick' : ''}" data-k="${k}"><span class="L">${LET[k]}.</span> ${t}</button>`; });
+  h += `<button class="btn" id="qNext" ${pick === undefined ? 'disabled' : ''}>${qz.i === QUIZ.length - 1 ? 'See my score' : 'Next →'}</button>`;
+  if (qz.i > 0) h += `<button class="btn sec" id="qBack">← Back</button>`;
+  el.innerHTML = h;
+  el.querySelectorAll('.opt').forEach(b => b.onclick = () => { qz.picks[qz.i] = +b.dataset.k; renderQuiz(); });
+  $('qNext').onclick = () => { if (qz.i === QUIZ.length - 1) qz.done = true; else qz.i++; renderQuiz(); };
+  if ($('qBack')) $('qBack').onclick = () => { qz.i--; renderQuiz(); };
+  updatePills();
+}
+
+// ---------- Modes ----------
+let mode = 'explore';
+const MODE_NAME = { explore:'Explore', identify:'Identify challenge', fix:'Fix-it repairs', quiz:'Quiz' };
+function updatePills() {
+  $('pillMode').textContent = MODE_NAME[mode]; const ps = $('pillScore'); let t = '';
+  if (mode === 'identify') t = `Score ${idS.right}/${idS.total}`;
+  if (mode === 'fix') t = `Fixed ${fx.res.filter(Boolean).length}/${SCEN.length}`;
+  if (mode === 'quiz') t = qz.done ? `Score ${qz.picks.filter((p, i) => p === QUIZ[i].a).length}/${QUIZ.length}` : `Q ${qz.i + 1}/${QUIZ.length}`;
+  ps.hidden = !t; ps.textContent = t;
+}
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+  for (const k of ['explore', 'identify', 'fix', 'quiz']) $('sec-' + k).hidden = k !== m;
+  house.visible = m !== 'fix'; bench.visible = m === 'fix';
+  renderer.domElement.style.cursor = 'grab';
+  $('hint').textContent = m === 'explore' ? 'Drag: rotate · Pinch/scroll: zoom · Two fingers/right-drag: pan · Tap a pipe' : 'Drag: rotate · Pinch/scroll: zoom · Two fingers/right-drag: pan';
+  applyLabels(); setHighlight(null);
+  if (m === 'explore') { if (selected) setHighlight(selected); flyTo(HOME.tgt, HOME.cam); }
+  if (m === 'identify') idRound();
+  if (m === 'fix') loadScenario(fx.idx);
+  if (m === 'quiz') { flyTo(HOME.tgt, HOME.cam); renderQuiz(); }
+  updatePills();
+  if (window.innerWidth <= 820) window.scrollTo({ top:0, behavior:'smooth' });
+}
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => setMode(b.dataset.m));
+
+// ---------- Resize ----------
+function resize() {
+  const w = view.clientWidth, h = view.clientHeight; if (!w || !h) return;
+  renderer.setSize(w, h, false); camera.aspect = w / h;
+  camera.fov = THREE.MathUtils.clamp(THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(60) / 2) / camera.aspect)), 35, 85);
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(view); window.addEventListener('resize', resize); resize();
+
+// ---------- Loop ----------
+const clock = new THREE.Clock();
+const ease = k => k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+function tick() {
+  const rdt = Math.min(clock.getDelta(), .25), dt = Math.min(rdt, .05), now = performance.now() / 1000;
+  if (camTween) { camTween.t += rdt; const k = ease(Math.min(1, camTween.t / camTween.dur)); controls.target.lerpVectors(camTween.t0, camTween.t1, k); camera.position.lerpVectors(camTween.c0, camTween.c1, k); if (k >= 1) camTween = null; }
+  if (hl) { const v = .2 + .2 * Math.sin(now * 5); for (const m of hl.mats) m.emissiveIntensity = v; }
+  if (house.visible) for (const f of flows) { if (!f.mesh.visible) continue; for (let i = 0; i < f.n; i++) { f.t[i] = (f.t[i] + f.speed * dt) % 1; f.curve.getPoint(f.t[i], tmpV); dummy.position.set(tmpV.x, tmpV.y, tmpV.z + f.offZ); dummy.updateMatrix(); f.mesh.setMatrixAt(i, dummy.matrix); } f.mesh.instanceMatrix.needsUpdate = true; }
+  if (bench.visible) {
+    for (let i = tweens.length - 1; i >= 0; i--) {
+      const tw = tweens[i]; tw.t += rdt; if (tw.t < tw.delay) continue; const k = Math.min(1, (tw.t - tw.delay) / tw.dur), e = ease(k);
+      if (tw.kind === 'pos') tw.obj.position.lerpVectors(tw.from, tw.to, e);
+      else { tw.obj.scale.setScalar(Math.max(.001, tw.from + (tw.to - tw.from) * e)); if (k >= 1 && tw.to <= .01) tw.obj.visible = false; }
+      if (k >= 1) tweens.splice(i, 1);
+    }
+    for (const d of drips) {
+      if (d.scen !== fx.idx) continue;
+      d.pud.scale.setScalar(THREE.MathUtils.lerp(d.pud.scale.x, d.on ? 1 : .001, dt * (d.on ? .15 : 1.2)));
+      if (!d.on) continue; d.acc += dt;
+      if (d.acc > .5) { d.acc = 0; const m = dropPool.find(o => !o.visible); if (m) { m.visible = true; m.position.copy(d.pos); m.userData.v = 0; } }
+    }
+    for (const m of dropPool) if (m.visible) { m.userData.v += 9.8 * dt * .6; m.position.y -= m.userData.v * dt; if (m.position.y < .02) m.visible = false; }
+    for (const g of gases) {
+      if (!g.on || g.scen !== fx.idx) continue; g.acc += dt;
+      if (g.acc > .16) { g.acc = 0; const s = puffPool.find(o => !o.visible); if (s) { s.visible = true; s.position.copy(g.pos); s.material.color.set(g.color); s.userData = { life:0, max:2.2 + Math.random(), ph:Math.random() * 6, x0:g.pos.x }; s.scale.setScalar(.08); } }
+    }
+    for (const s of puffPool) if (s.visible) { const u = s.userData; u.life += dt; const k = u.life / u.max; s.position.y += .32 * dt; s.position.x = u.x0 + Math.sin(u.life * 2.5 + u.ph) * .12 * k; s.scale.setScalar(.08 + k * .45); s.material.opacity = .6 * (1 - k) * Math.min(1, u.life * 4); if (k >= 1) { s.visible = false; s.material.opacity = 0; } }
+  }
+  controls.update(); renderer.render(scene, camera); requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+updatePills();
+window.__lesson = { setMode, select, loadScenario, get mode() { return mode; }, ids:IDS, id:() => ({ cur:idS.cur, opts:idS.opts }), fix:() => ({ idx:fx.idx, step:fx.step, diag:SCEN[fx.idx].diag.find(o => o.ok).t, rep:SCEN[fx.idx].fix.find(o => o.ok).t }), quizKey:QUIZ.map(q => q.a) };
+</script>
+<script>
+  window.addEventListener('load', () => setTimeout(() => { if (!window.__lesson) document.getElementById('err').style.display = 'flex'; }, 5000));
+</script>
+</body>
+</html>

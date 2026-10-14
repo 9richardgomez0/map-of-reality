@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="data:,">
+<title>Wire Size &amp; Breakers – 3D Lesson</title>
+<style>
+  :root { --bg:#0f1418; --panel:#1a2228; --ink:#e8edf0; --mute:#9fb0bb; --ok:#2ecc71; --warn:#f1c40f; --bad:#e74c3c; --copper:#d9894a; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
+  #app { display:grid; grid-template-columns: 1fr 380px; height:100vh; height:100dvh; }
+  #view { position:relative; min-height:0; }
+  #view canvas { display:block; width:100%; height:100%; touch-action:none; }
+  #hint { position:absolute; left:10px; bottom:10px; font-size:12px; color:var(--mute); background:rgba(0,0,0,.45); padding:4px 8px; border-radius:6px; pointer-events:none; }
+  #status3d { position:absolute; left:10px; top:10px; right:10px; display:flex; gap:8px; flex-wrap:wrap; pointer-events:none; }
+  .pill { padding:6px 10px; border-radius:999px; font-weight:700; font-size:14px; background:rgba(0,0,0,.55); }
+  #side { background:var(--panel); overflow-y:auto; padding:14px 14px 30px; border-left:1px solid #2a353d; }
+  h1 { font-size:19px; margin:0 0 10px; }
+  h2 { font-size:15px; margin:16px 0 8px; color:var(--mute); text-transform:uppercase; letter-spacing:.05em; }
+  .seg { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+  .seg button { min-height:48px; font-size:16px; font-weight:700; border-radius:10px; border:2px solid #34434d; background:#222c33; color:var(--ink); cursor:pointer; }
+  .seg button.on { border-color:var(--copper); background:#3a2a1e; color:#ffd2ae; }
+  .seg small { display:block; font-size:11px; font-weight:500; color:var(--mute); }
+  input[type=range] { width:100%; height:44px; accent-color:var(--copper); }
+  .loadread { display:flex; justify-content:space-between; font-size:18px; font-weight:700; }
+  .loadread span:last-child { color:var(--mute); }
+  #meter { position:relative; height:26px; background:#10161a; border-radius:8px; overflow:hidden; border:1px solid #34434d; margin-top:6px; }
+  #meterFill { position:absolute; left:0; top:0; bottom:0; width:0; background:var(--ok); transition:width .1s, background .2s; }
+  #m80, #m100 { position:absolute; top:0; bottom:0; width:3px; }
+  #m80 { background:var(--warn); } #m100 { background:var(--bad); }
+  #meterLbl { display:flex; justify-content:space-between; font-size:11px; color:var(--mute); margin-top:3px; }
+  #status { margin-top:10px; padding:12px; border-radius:10px; font-weight:700; font-size:16px; }
+  .s-ok { background:#163524; color:#8ff0b5; } .s-warn { background:#3d3412; color:#ffe27a; } .s-bad { background:#45191a; color:#ff9b93; } .s-off { background:#2a2f33; color:#cfd8dc; }
+  #trip { height:8px; border-radius:4px; background:#10161a; margin-top:8px; overflow:hidden; display:none; }
+  #tripFill { height:100%; width:0; background:var(--bad); }
+  #danger { display:none; margin-top:10px; padding:12px; border-radius:10px; background:#5a0f0f; border:2px solid var(--bad); color:#fff; font-weight:700; }
+  #danger.hot { animation:pulse .6s infinite alternate; }
+  @keyframes pulse { from { box-shadow:0 0 0 rgba(231,76,60,0);} to { box-shadow:0 0 18px rgba(231,76,60,.9);} }
+  #reset { width:100%; min-height:52px; margin-top:10px; font-size:17px; font-weight:800; border-radius:10px; border:none; background:#2d7dd2; color:#fff; cursor:pointer; }
+  #reset:disabled { background:#2a353d; color:#6c7b85; cursor:default; }
+  .explain { background:#12191e; border-radius:10px; padding:10px 12px; font-size:15px; line-height:1.45; }
+  .explain ul { margin:4px 0; padding-left:18px; }
+  .explain b { color:#ffd2ae; }
+  table { width:100%; border-collapse:collapse; font-size:14px; margin-top:6px; }
+  td,th { border-bottom:1px solid #2a353d; padding:5px; text-align:left; }
+  details { background:#12191e; border-radius:10px; padding:10px 12px; margin-bottom:8px; font-size:15px; line-height:1.4; }
+  summary { cursor:pointer; font-weight:700; }
+  details .ans { margin-top:8px; color:#a8e6c1; }
+  details button { margin-top:8px; min-height:40px; padding:0 12px; border-radius:8px; border:1px solid #34434d; background:#222c33; color:var(--ink); font-size:14px; cursor:pointer; }
+  #err { display:none; position:absolute; inset:0; align-items:center; justify-content:center; text-align:center; padding:20px; color:var(--mute); }
+  @media (max-width: 820px) {
+    #app { grid-template-columns:1fr; grid-template-rows: 48vh auto; height:auto; }
+    #view { height:48vh; height:48dvh; position:sticky; top:0; z-index:2; background:var(--bg); }
+    #side { border-left:none; border-top:1px solid #2a353d; overflow:visible; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app">
+  <div id="view">
+    <div id="status3d"><span class="pill" id="pillBreaker">Breaker: ON</span><span class="pill" id="pillWire">Wire: cool</span></div>
+    <div id="hint">Drag to rotate · pinch/scroll to zoom · two fingers/right-drag to pan</div>
+    <div id="err">Couldn't load the 3D library. Check your internet connection and reload.</div>
+  </div>
+  <div id="side">
+    <h1>⚡ Wire Size &amp; Breakers</h1>
+
+    <h2>1. Wire size</h2>
+    <div class="seg" id="awgSeg">
+      <button data-v="14">14<small>AWG · 15A</small></button>
+      <button data-v="12">12<small>AWG · 20A</small></button>
+      <button data-v="10">10<small>AWG · 30A</small></button>
+      <button data-v="8">8<small>AWG · 40A</small></button>
+    </div>
+
+    <h2>2. Breaker size</h2>
+    <div class="seg" id="brkSeg">
+      <button data-v="15">15A</button>
+      <button data-v="20">20A</button>
+      <button data-v="30">30A</button>
+      <button data-v="40">40A</button>
+    </div>
+
+    <h2>3. Load (what's plugged in)</h2>
+    <div class="loadread"><span id="ampsTxt">10 A</span><span id="wattsTxt">1,200 W at 120V</span></div>
+    <input type="range" id="load" min="0" max="50" step="0.5" value="10" aria-label="Load in amps">
+    <div id="meter"><div id="meterFill"></div><div id="m80"></div><div id="m100"></div></div>
+    <div id="meterLbl"><span>0</span><span id="lbl80">80% = 12A</span><span id="lbl100">Breaker 15A</span></div>
+
+    <div id="status" class="s-ok">OK</div>
+    <div id="trip"><div id="tripFill"></div></div>
+    <div id="danger">⚠️ Breaker too big for this wire – the wire overheats before the breaker trips. Fire hazard.</div>
+    <button id="reset" disabled>Reset breaker (turn it back ON)</button>
+
+    <h2>How it works</h2>
+    <div class="explain">
+      <ul>
+        <li><b>AWG</b> = American Wire Gauge. <b>Smaller number = thicker wire = more amps</b> it can carry safely.</li>
+        <li>Too many amps through a wire makes it <b>heat up</b>. Hot enough, the insulation melts and it can start a fire.</li>
+        <li>The <b>breaker protects the wire</b>, not the appliance. It shuts off when the amps go over its rating.</li>
+        <li>For loads that run for hours (heaters, AC), stay at or under <b>80%</b> of the breaker.</li>
+        <li><b>Never put a bigger breaker on a smaller wire.</b></li>
+      </ul>
+      <table>
+        <tr><th>Wire</th><th>Max safe amps</th><th>Breaker</th></tr>
+        <tr><td>14 AWG</td><td>15 A</td><td>15 A</td></tr>
+        <tr><td>12 AWG</td><td>20 A</td><td>20 A</td></tr>
+        <tr><td>10 AWG</td><td>30 A</td><td>30 A</td></tr>
+        <tr><td>8 AWG</td><td>40 A</td><td>40 A</td></tr>
+      </table>
+      <div style="margin-top:6px;color:var(--mute);font-size:13px">Watts = Amps × Volts. Amps = Watts ÷ 120. (Wire thickness is exaggerated in 3D so you can see it.)</div>
+    </div>
+
+    <h2>Challenges</h2>
+    <details>
+      <summary>1. Make the wire overheat without tripping the breaker. What did you change?</summary>
+      <div class="ans">Answer: put a breaker that's bigger than the wire can handle (like a 30A breaker on 14 AWG) and set the load around 20–25A. The wire is over its 15A limit, but the breaker won't trip until 30A. That's the fire hazard.</div>
+      <button data-preset="14,30,24">Show me</button>
+    </details>
+    <details>
+      <summary>2. On 12 AWG with a 20A breaker, what's the most a space heater (long-running load) should draw?</summary>
+      <div class="ans">Answer: 16A, which is 80% of 20A. That's 1,920 watts. Slide past 16A and the status turns yellow.</div>
+      <button data-preset="12,20,16">Show me</button>
+    </details>
+    <details>
+      <summary>3. An 1,800W hair dryer and a 600W TV share a 14 AWG / 15A circuit. What happens?</summary>
+      <div class="ans">Answer: 2,400W ÷ 120V = 20A. That's over the 15A breaker, so it trips after a few seconds. The wire was protected because the breaker matches the wire.</div>
+      <button data-preset="14,15,20">Show me</button>
+    </details>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const AMPACITY = { 14:15, 12:20, 10:30, 8:40 };
+const RADIUS   = { 14:0.045, 12:0.065, 10:0.09, 8:0.12 };   // exaggerated for visibility
+const state = { awg:14, breaker:15, load:10, on:true, temp:0, tripProg:0, handle:1 };
+
+// ---------- Renderer / scene ----------
+const view = document.getElementById('view');
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+view.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1b2329);
+scene.fog = new THREE.Fog(0x1b2329, 18, 40);
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+camera.position.set(0.4, 2.4, 9.5);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0.2, 0.4, 0);
+controls.enableDamping = true;
+controls.minDistance = 2.5; controls.maxDistance = 18;
+controls.maxPolarAngle = Math.PI * 0.55;
+
+scene.add(new THREE.HemisphereLight(0xdfe9f3, 0x2a2018, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 1.4);
+sun.position.set(4, 7, 6); sun.castShadow = true; sun.shadow.mapSize.set(1024,1024);
+Object.assign(sun.shadow.camera, { left:-8, right:8, top:8, bottom:-8 });
+scene.add(sun);
+
+// Wall + floor
+const wall = new THREE.Mesh(new THREE.PlaneGeometry(30, 12), new THREE.MeshStandardMaterial({ color:0xb9b2a4, roughness:.95 }));
+wall.position.set(0, 3, -0.6); wall.receiveShadow = true; scene.add(wall);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ color:0x5d4a3a, roughness:.9 }));
+floor.rotation.x = -Math.PI/2; floor.position.y = -1.6; floor.receiveShadow = true; scene.add(floor);
+
+// Text helpers
+function makeLabelTexture(text, opts={}) {
+  const c = document.createElement('canvas'); c.width = opts.w||256; c.height = opts.h||128;
+  const g = c.getContext('2d');
+  g.fillStyle = opts.bg || 'rgba(0,0,0,0)'; g.fillRect(0,0,c.width,c.height);
+  g.fillStyle = opts.color || '#fff'; g.font = `bold ${opts.size||64}px Arial`; g.textAlign='center'; g.textBaseline='middle';
+  g.fillText(text, c.width/2, c.height/2);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+}
+function makeSprite(text, scale, opts) {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeLabelTexture(text, opts), depthTest:false }));
+  s.scale.set(scale*2, scale, 1); s.renderOrder = 10; return s;
+}
+function setSprite(s, text, opts) { s.material.map.dispose(); s.material.map = makeLabelTexture(text, opts); s.material.needsUpdate = true; }
+
+// ---------- Breaker panel ----------
+const panel = new THREE.Group(); panel.position.set(-3, 0.6, 0); scene.add(panel);
+const steel = new THREE.MeshStandardMaterial({ color:0x8d969c, metalness:.6, roughness:.45 });
+const darkSteel = new THREE.MeshStandardMaterial({ color:0x3b4247, metalness:.5, roughness:.6 });
+const box = new THREE.Mesh(new THREE.BoxGeometry(1.8, 3, 0.5), steel); box.castShadow = true; panel.add(box);
+const inner = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.8, 0.05), darkSteel); inner.position.z = 0.26; panel.add(inner);
+// open door
+const door = new THREE.Mesh(new THREE.BoxGeometry(1.8, 3, 0.05), steel);
+door.geometry.translate(-0.9, 0, 0); door.position.set(-0.9, 0, 0.27); door.rotation.y = 1.25; door.castShadow = true; panel.add(door);
+// dummy breakers (greyed, show it's a panel)
+const blankMat = new THREE.MeshStandardMaterial({ color:0x24292d, roughness:.7 });
+for (let i=0;i<6;i++) for (let side of [-1,1]) {
+  if (i===2 && side===-1) continue;
+  const b = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.32, 0.12), blankMat);
+  b.position.set(side*0.38, 1.05 - i*0.38, 0.33); panel.add(b);
+  const h = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.1), blankMat); h.position.set(side*0.38, 1.05-i*0.38, 0.42); panel.add(h);
+}
+// active breaker
+const brk = new THREE.Group(); brk.position.set(-0.38, 1.05 - 2*0.38, 0.33); panel.add(brk);
+const brkBody = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.34, 0.14), new THREE.MeshStandardMaterial({ color:0x111417, roughness:.5 }));
+brk.add(brkBody);
+const frame = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.42, 0.1), new THREE.MeshBasicMaterial({ color:0xffc94a })); frame.position.z = -0.03; brk.add(frame);
+const handlePivot = new THREE.Group(); handlePivot.position.set(0, 0, 0.06); brk.add(handlePivot);
+const handleMat = new THREE.MeshStandardMaterial({ color:0x2a2f35, roughness:.4 });
+const handle = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.12, 0.22), handleMat);
+handle.position.set(0, 0, 0.1); handlePivot.add(handle);
+const handleFace = new THREE.Mesh(new THREE.PlaneGeometry(0.28, 0.2), new THREE.MeshBasicMaterial({ map: makeLabelTexture('15', {size:96}), transparent:true }));
+handleFace.position.set(0, 0, 0.211); handleFace.scale.set(1, 0.55, 1); handle.add(handleFace);
+const onLbl = makeSprite('ON', 0.16, {color:'#7dff9e'}); onLbl.position.set(0.42, 0.12, 0.1); brk.add(onLbl);
+const offLbl = makeSprite('OFF', 0.16, {color:'#ff8f8f'}); offLbl.position.set(0.42, -0.12, 0.1); brk.add(offLbl);
+const brkSprite = makeSprite('Breaker 15A', 0.3, {color:'#fff', bg:'rgba(20,30,40,.85)', size:44, w:320}); brkSprite.position.set(0, 2.0, 0.4); panel.add(brkSprite);
+// breaker heat indicator light
+const tripLight = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 16), new THREE.MeshBasicMaterial({ color:0x33ff66 }));
+tripLight.position.set(-0.22, 0.1, 0.08); brk.add(tripLight);
+
+// ---------- Load (appliance) ----------
+const load = new THREE.Group(); load.position.set(3.6, -0.6, 0.6); scene.add(load);
+const loadBody = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.8, 1.2), new THREE.MeshStandardMaterial({ color:0xe9edf0, roughness:.5 }));
+loadBody.castShadow = true; load.add(loadBody);
+const grill = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.9), new THREE.MeshStandardMaterial({ color:0x333a40, emissive:0x000000 }));
+grill.position.set(0, 0.2, 0.61); load.add(grill);
+const coilMat = new THREE.MeshStandardMaterial({ color:0x553322, emissive:0xff4400, emissiveIntensity:0 });
+for (let i=0;i<4;i++) { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,1.0,8), coilMat); c.rotation.z = Math.PI/2; c.position.set(0, 0.5 - i*0.2, 0.63); load.add(c); }
+const loadSprite = makeSprite('1,200 W', 0.32, {bg:'rgba(20,30,40,.85)', size:52, w:320}); loadSprite.position.set(0, 1.35, 0); load.add(loadSprite);
+const loadName = makeSprite('LOAD (appliance)', 0.22, {color:'#222', size:40, w:400}); loadName.position.set(0, -0.55, 0.62); loadName.material.depthTest = true; load.add(loadName);
+
+// ---------- Wire ----------
+const brkWorld = new THREE.Vector3(); 
+const startPt = new THREE.Vector3(-3.38, 0.88, 0.45);
+const curve = new THREE.CatmullRomCurve3([
+  startPt, new THREE.Vector3(-2.4, 0.9, 0.9), new THREE.Vector3(-1.0, 1.4, 1.2),
+  new THREE.Vector3(0.8, 1.2, 1.3), new THREE.Vector3(2.2, 0.6, 1.4), new THREE.Vector3(2.85, 0.0, 1.0)
+]);
+const COPPER = new THREE.Color(0xc8743a), ORANGE = new THREE.Color(0xff8c1a), RED = new THREE.Color(0xff2a10);
+const wireMat = new THREE.MeshStandardMaterial({ color:COPPER.clone(), metalness:.85, roughness:.3, emissive:0x000000 });
+let wire = null;
+function buildWire() {
+  if (wire) { scene.remove(wire); wire.geometry.dispose(); }
+  wire = new THREE.Mesh(new THREE.TubeGeometry(curve, 160, RADIUS[state.awg], 20, false), wireMat);
+  wire.castShadow = true; scene.add(wire);
+}
+const wireSprite = makeSprite('14 AWG', 0.32, {bg:'rgba(200,116,58,.92)', size:56, w:320}); wireSprite.position.copy(curve.getPoint(0.45)).add(new THREE.Vector3(0, 0.55, 0)); scene.add(wireSprite);
+const wireGlow = new THREE.PointLight(0xff3300, 0, 6); wireGlow.position.copy(curve.getPoint(0.5)).add(new THREE.Vector3(0,0,0.4)); scene.add(wireGlow);
+
+// ---------- Particles (electrons / current) ----------
+const MAXP = 240;
+const pGeo = new THREE.SphereGeometry(1, 8, 8);
+const pMat = new THREE.MeshBasicMaterial({ color:0x9fe7ff });
+const parts = new THREE.InstancedMesh(pGeo, pMat, MAXP); parts.frustumCulled = false; scene.add(parts);
+const pT = Array.from({length:MAXP}, (_,i)=> i/MAXP);
+const pOff = Array.from({length:MAXP}, ()=> [Math.random()*2-1, Math.random()*2-1]);
+const dummy = new THREE.Object3D(); const tmpV = new THREE.Vector3();
+
+// ---------- Smoke ----------
+const smokeTex = (()=>{ const c=document.createElement('canvas'); c.width=c.height=64; const g=c.getContext('2d');
+  const gr=g.createRadialGradient(32,32,2,32,32,32); gr.addColorStop(0,'rgba(200,200,200,1)'); gr.addColorStop(1,'rgba(200,200,200,0)');
+  g.fillStyle=gr; g.fillRect(0,0,64,64); return new THREE.CanvasTexture(c); })();
+const smoke = [];
+for (let i=0;i<70;i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map:smokeTex, transparent:true, opacity:0, depthWrite:false, color:0x777777 })); s.visible=false; s.userData={life:0}; scene.add(s); smoke.push(s); }
+function spawnSmoke() {
+  const s = smoke.find(o=>!o.visible); if (!s) return;
+  const t = 0.1 + Math.random()*0.8; s.position.copy(curve.getPoint(t)); s.visible = true;
+  s.userData = { life:0, max: 2 + Math.random()*1.5, vx:(Math.random()-.5)*.15, vy: .5 + Math.random()*.4 };
+  s.scale.setScalar(0.15);
+}
+
+// ---------- Audio ----------
+let actx = null;
+function ensureAudio() { if (!actx) { try { actx = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){} } if (actx && actx.state==='suspended') actx.resume(); }
+function click(freq=180, dur=0.06) {
+  if (!actx) return;
+  const t = actx.currentTime;
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type='square'; o.frequency.setValueAtTime(freq*4, t); o.frequency.exponentialRampToValueAtTime(freq, t+dur);
+  g.gain.setValueAtTime(0.35, t); g.gain.exponentialRampToValueAtTime(0.001, t+dur);
+  o.connect(g).connect(actx.destination); o.start(t); o.stop(t+dur+0.02);
+  // noise snap
+  const buf = actx.createBuffer(1, actx.sampleRate*0.03, actx.sampleRate); const d = buf.getChannelData(0);
+  for (let i=0;i<d.length;i++) d[i] = (Math.random()*2-1)*(1-i/d.length);
+  const n = actx.createBufferSource(); n.buffer = buf; const ng = actx.createGain(); ng.gain.value = 0.5; n.connect(ng).connect(actx.destination); n.start(t);
+}
+window.addEventListener('pointerdown', ensureAudio, { once:false });
+
+// ---------- UI ----------
+const $ = id => document.getElementById(id);
+const fmt = n => Math.round(n).toLocaleString('en-US');
+function selectSeg(id, v) { document.querySelectorAll(`#${id} button`).forEach(b => b.classList.toggle('on', +b.dataset.v === v)); }
+document.querySelectorAll('#awgSeg button').forEach(b => b.onclick = () => { state.awg = +b.dataset.v; applyConfig(); });
+document.querySelectorAll('#brkSeg button').forEach(b => b.onclick = () => { state.breaker = +b.dataset.v; applyConfig(); });
+$('load').oninput = e => { state.load = +e.target.value; updateLoadText(); };
+$('reset').onclick = () => { ensureAudio(); state.on = true; state.tripProg = 0; click(260, 0.05); };
+document.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => {
+  const [a, br, l] = b.dataset.preset.split(',').map(Number);
+  state.awg = a; state.breaker = br; state.load = l; $('load').value = l; state.on = true; state.tripProg = 0; state.temp = 0;
+  applyConfig(); updateLoadText();
+  if (window.innerWidth <= 820) window.scrollTo({ top:0, behavior:'smooth' });
+});
+function updateLoadText() {
+  $('ampsTxt').textContent = `${state.load} A`;
+  $('wattsTxt').textContent = `${fmt(state.load*120)} W at 120V`;
+  setSprite(loadSprite, `${fmt(state.load*120)} W`, {bg:'rgba(20,30,40,.85)', size:52, w:320});
+}
+function applyConfig() {
+  selectSeg('awgSeg', state.awg); selectSeg('brkSeg', state.breaker);
+  buildWire();
+  setSprite(wireSprite, `${state.awg} AWG`, {bg:'rgba(200,116,58,.92)', size:56, w:320});
+  handleFace.material.map.dispose(); handleFace.material.map = makeLabelTexture(String(state.breaker), {size:96}); handleFace.material.needsUpdate = true;
+  setSprite(brkSprite, `Breaker ${state.breaker}A`, {color:'#fff', bg:'rgba(20,30,40,.85)', size:44, w:320});
+  $('lbl80').textContent = `80% = ${+(state.breaker*0.8).toFixed(1)}A`;
+  $('lbl100').textContent = `Breaker ${state.breaker}A`;
+}
+
+// Inverse-time trip curve: small overloads take seconds, big ones trip almost instantly.
+function tripTime(ratio) { if (ratio >= 2) return 0.08; return 0.15 + 5 * Math.pow(2 - ratio, 2); }
+
+let lastStatusKey = '';
+function updateUI(I) {
+  const amp = AMPACITY[state.awg];
+  const scaleMax = Math.max(50, state.breaker * 1.25);
+  $('meterFill').style.width = Math.min(100, state.load/scaleMax*100) + '%';
+  $('m80').style.left = (state.breaker*0.8/scaleMax*100) + '%';
+  $('m100').style.left = (state.breaker/scaleMax*100) + '%';
+  let cls, txt, fill;
+  if (!state.on) { cls='s-off'; txt='Breaker TRIPPED (OFF). No current is flowing, so the wire is cooling down. Lower the load, then press Reset.'; fill='#7f8c8d'; }
+  else if (state.load > state.breaker) { cls='s-bad'; txt=`Over the breaker rating (${state.load}A > ${state.breaker}A). The breaker is about to trip…`; fill='var(--bad)'; }
+  else if (state.load > state.breaker*0.8) { cls='s-warn'; txt=`Over 80% – too much for a long-running load (limit ${+(state.breaker*0.8).toFixed(1)}A)`; fill='var(--warn)'; }
+  else { cls='s-ok'; txt= state.load === 0 ? 'OK – nothing is drawing power' : 'OK'; fill='var(--ok)'; }
+  if (state.on && state.load > amp && state.load <= state.breaker) txt += ` · But the wire is over its ${amp}A limit and heating up!`;
+  const key = cls + txt;
+  if (key !== lastStatusKey) { $('status').className = cls; $('status').textContent = txt; lastStatusKey = key; }
+  $('meterFill').style.background = fill;
+  $('trip').style.display = (state.on && state.load > state.breaker) ? 'block' : 'none';
+  $('tripFill').style.width = (state.tripProg*100) + '%';
+  const danger = state.breaker > amp;
+  $('danger').style.display = danger ? 'block' : 'none';
+  $('danger').classList.toggle('hot', danger && state.temp > 0.3);
+  $('reset').disabled = state.on;
+  $('pillBreaker').textContent = state.on ? 'Breaker: ON' : 'Breaker: TRIPPED (OFF)';
+  $('pillBreaker').style.color = state.on ? '#8ff0b5' : '#ff9b93';
+  const tw = state.temp < 0.08 ? ['cool','#e8c3a3'] : state.temp < 0.45 ? ['warm','#ffb36b'] : state.temp < 0.75 ? ['HOT','#ff7a3d'] : ['GLOWING – fire risk','#ff4a3a'];
+  $('pillWire').textContent = `Wire: ${tw[0]} · ${I.toFixed(1)}A flowing`; $('pillWire').style.color = tw[1];
+}
+
+// ---------- Resize ----------
+function resize() {
+  const w = view.clientWidth, h = view.clientHeight;
+  renderer.setSize(w, h, false); camera.aspect = w/h;
+  const hfov = 2*Math.atan(Math.tan(THREE.MathUtils.degToRad(58)/2)); camera.fov = THREE.MathUtils.clamp(THREE.MathUtils.radToDeg(2*Math.atan(Math.tan(THREE.MathUtils.degToRad(58)/2)/camera.aspect)), 38, 80); camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(view); window.addEventListener('resize', resize);
+
+// ---------- Loop ----------
+applyConfig(); updateLoadText(); resize();
+const clock = new THREE.Clock();
+let smokeAcc = 0;
+function tick() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const amp = AMPACITY[state.awg];
+  const I = state.on ? state.load : 0;
+
+  // Breaker trip logic
+  if (state.on && state.load > state.breaker) {
+    state.tripProg += dt / tripTime(state.load / state.breaker);
+    if (state.tripProg >= 1) { state.on = false; state.tripProg = 1; click(170, 0.07); }
+  } else if (state.on) {
+    state.tripProg = Math.max(0, state.tripProg - dt*0.3);  // breaker cools when back under rating
+  }
+
+  // Wire heating: only heats when current exceeds the WIRE's ampacity
+  const over = I / amp;
+  const target = over > 1 ? Math.min(1, (over - 1) / 0.7) : 0;
+  const rate = target > state.temp ? 0.6 + over*0.6 : 0.45;
+  state.temp += (target - state.temp) * Math.min(1, dt * rate);
+
+  // Wire colour
+  const t = state.temp;
+  const col = t < 0.5 ? COPPER.clone().lerp(ORANGE, t/0.5) : ORANGE.clone().lerp(RED, (t-0.5)/0.5);
+  wireMat.color.copy(col);
+  wireMat.emissive.copy(t < 0.5 ? ORANGE : RED).multiplyScalar(Math.max(0, t - 0.15) * 1.3);
+  wireGlow.intensity = Math.max(0, t - 0.3) * 8;
+
+  // Breaker handle animation (snaps quickly)
+  const hTarget = state.on ? 1 : -1;
+  state.handle += (hTarget - state.handle) * Math.min(1, dt * 25);
+  handlePivot.rotation.x = -state.handle * 0.45;
+  tripLight.material.color.set(!state.on ? 0x666666 : state.tripProg > 0.02 ? 0xff3322 : 0x33ff66);
+  tripLight.scale.setScalar(state.on && state.tripProg > 0.02 ? 1 + 0.4*Math.sin(performance.now()/60) : 1);
+
+  // Appliance glow
+  coilMat.emissiveIntensity = I > 0 ? 0.3 + Math.min(1.5, I/30) : 0;
+
+  // Particles
+  const active = I > 0 ? Math.round(20 + Math.min(1, I/50) * (MAXP-20)) : 0;
+  const speed = 0.04 + I * 0.012;
+  const r = RADIUS[state.awg];
+  for (let i=0;i<MAXP;i++) {
+    if (i < active) {
+      pT[i] = (pT[i] + speed*dt) % 1;
+      curve.getPoint(pT[i], tmpV);
+      dummy.position.set(tmpV.x, tmpV.y + pOff[i][0]*r*0.5, tmpV.z + pOff[i][1]*r*0.5 + r*0.55);
+      dummy.scale.setScalar(Math.max(0.018, r*0.35));
+    } else dummy.scale.setScalar(0);
+    dummy.updateMatrix(); parts.setMatrixAt(i, dummy.matrix);
+  }
+  parts.instanceMatrix.needsUpdate = true;
+  pMat.color.setHSL(0.55 - Math.min(0.5, t*0.5), 1, 0.75);
+
+  // Smoke
+  if (state.temp > 0.55) { smokeAcc += dt * (state.temp - 0.5) * 60; while (smokeAcc > 1) { spawnSmoke(); smokeAcc -= 1; } }
+  for (const s of smoke) if (s.visible) {
+    const u = s.userData; u.life += dt;
+    s.position.x += u.vx*dt; s.position.y += u.vy*dt;
+    const k = u.life / u.max; s.scale.setScalar(0.15 + k*0.9);
+    s.material.opacity = 0.55 * (1 - k) * Math.min(1, u.life*4);
+    if (k >= 1) { s.visible = false; s.material.opacity = 0; }
+  }
+
+  updateUI(I);
+  controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+window.__lesson = state;   // for testing
+</script>
+<script>
+  // If the 3D module fails to load (no internet), tell the user.
+  window.addEventListener('load', () => setTimeout(() => { if (!window.__lesson) document.getElementById('err').style.display = 'flex'; }, 4000));
+</script>
+</body>
+</html>
